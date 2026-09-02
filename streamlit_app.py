@@ -1,12 +1,15 @@
 import streamlit as st
+import database
+
 
 # ============================================================
 # AI-DENTAL PRO
 # Intelligent Dental & Orthodontic Clinic Management System
 # ============================================================
 # Developed by: Rashpreet Kaur Arora
-# Technology: Python + Streamlit
+# BCA 2nd Year
 # ============================================================
+
 
 st.set_page_config(
     page_title="AI-Dental Pro",
@@ -15,9 +18,17 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# -----------------------------
-# Custom CSS
-# -----------------------------
+
+# ============================================================
+# DATABASE
+# ============================================================
+
+database.initialize_database()
+
+
+# ============================================================
+# CUSTOM DESIGN
+# ============================================================
 
 st.markdown("""
 <style>
@@ -41,7 +52,7 @@ st.markdown("""
 .subtitle {
     text-align: center;
     font-size: 18px;
-    margin-bottom: 25px;
+    margin-bottom: 5px;
 }
 
 .developer {
@@ -67,19 +78,26 @@ st.markdown("""
 .card-number {
     font-size: 32px;
     font-weight: 800;
-    margin-top: 8px;
 }
 
 .section-title {
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 750;
     margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+.patient-card {
+    padding: 20px;
+    border-radius: 18px;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.07);
     margin-bottom: 15px;
 }
 
 .footer {
     text-align: center;
-    margin-top: 40px;
+    margin-top: 50px;
     padding: 20px;
     font-size: 14px;
 }
@@ -88,9 +106,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# -----------------------------
-# Header
-# -----------------------------
+# ============================================================
+# HEADER
+# ============================================================
 
 st.markdown(
     '<div class="main-title">🦷 AI-DENTAL PRO</div>',
@@ -112,9 +130,9 @@ st.markdown(
 )
 
 
-# -----------------------------
-# Sidebar
-# -----------------------------
+# ============================================================
+# SIDEBAR
+# ============================================================
 
 st.sidebar.title("🦷 AI-Dental Pro")
 
@@ -142,14 +160,20 @@ menu = st.sidebar.radio(
 )
 
 
-# -----------------------------
-# Dashboard
-# -----------------------------
+# ============================================================
+# DASHBOARD
+# ============================================================
 
 if menu == "🏠 Dashboard":
 
+    patients = database.get_patients()
+
+    total_patients = len(patients)
+
     st.markdown(
-        '<div class="section-title">Welcome to AI-Dental Pro 👋</div>',
+        '<div class="section-title">'
+        'Welcome to AI-Dental Pro 👋'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -161,10 +185,10 @@ if menu == "🏠 Dashboard":
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class="card">
             <div class="card-title">👥 Patients</div>
-            <div class="card-number">248</div>
+            <div class="card-number">{total_patients}</div>
             <div>Registered</div>
         </div>
         """, unsafe_allow_html=True)
@@ -173,7 +197,7 @@ if menu == "🏠 Dashboard":
         st.markdown("""
         <div class="card">
             <div class="card-title">📅 Appointments</div>
-            <div class="card-number">18</div>
+            <div class="card-number">0</div>
             <div>Today</div>
         </div>
         """, unsafe_allow_html=True)
@@ -182,7 +206,7 @@ if menu == "🏠 Dashboard":
         st.markdown("""
         <div class="card">
             <div class="card-title">🦷 Treatments</div>
-            <div class="card-number">126</div>
+            <div class="card-number">0</div>
             <div>Active Cases</div>
         </div>
         """, unsafe_allow_html=True)
@@ -204,69 +228,341 @@ if menu == "🏠 Dashboard":
     q1, q2, q3 = st.columns(3)
 
     with q1:
-        if st.button("👤 Register Patient", use_container_width=True):
-            st.info("Patient registration module will be connected next.")
+        if st.button(
+            "👤 Register Patient",
+            use_container_width=True
+        ):
+            st.info(
+                "Open 👤 Patients → Register New Patient"
+            )
 
     with q2:
-        if st.button("📅 Book Appointment", use_container_width=True):
-            st.info("Appointment module will be connected next.")
+        if st.button(
+            "📅 Book Appointment",
+            use_container_width=True
+        ):
+            st.info(
+                "Appointment module will be added next."
+            )
 
     with q3:
-        if st.button("🤖 Open AI Center", use_container_width=True):
-            st.info("Hugging Face AI module will be connected later.")
+        if st.button(
+            "🤖 Open AI Center",
+            use_container_width=True
+        ):
+            st.info(
+                "Hugging Face AI will be connected later."
+            )
 
 
-# -----------------------------
-# Other sections
-# -----------------------------
+# ============================================================
+# PATIENT MANAGEMENT
+# ============================================================
 
 elif menu == "👤 Patients":
-    st.title("👤 Patient Management")
-    st.info("Patient registration and records module — coming next.")
 
-elif menu == "📅 Appointments":
-    st.title("📅 Appointment Management")
-    st.info("Appointment and queue module — coming next.")
-
-elif menu == "🦷 Orthodontics":
-    st.title("🦷 Orthodontic Management")
-    st.info("Braces, aligners and treatment tracking — coming next.")
-
-elif menu == "🪥 Dental Care":
-    st.title("🪥 Dental Care")
-    st.info("Dental health and hygiene module — coming next.")
-
-elif menu == "🔔 Reminders":
-    st.title("🔔 Smart Reminders")
-    st.info("Appointment and dental-care reminders — coming next.")
-
-elif menu == "💳 Billing":
-    st.title("💳 Billing & Payments")
-    st.info("Billing, invoices and installment tracking — coming next.")
-
-elif menu == "📦 Inventory":
-    st.title("📦 Clinic Inventory")
-    st.info("Inventory and equipment management — coming next.")
-
-elif menu == "🤖 AI Care Center":
-    st.title("🤖 AI Care Center")
-    st.info(
-        "Hugging Face-powered AI-assisted analysis will be integrated "
-        "after the core system is completed."
+    st.markdown(
+        '<div class="section-title">'
+        '👤 Patient Management'
+        '</div>',
+        unsafe_allow_html=True
     )
 
+    tab1, tab2, tab3 = st.tabs([
+        "➕ Register Patient",
+        "🔍 Search Patient",
+        "📋 All Patients"
+    ])
+
+
+    # --------------------------------------------------------
+    # REGISTER
+    # --------------------------------------------------------
+
+    with tab1:
+
+        st.subheader("➕ New Patient Registration")
+
+        with st.form("patient_form"):
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                full_name = st.text_input(
+                    "Full Name *"
+                )
+
+                date_of_birth = st.date_input(
+                    "Date of Birth"
+                )
+
+                gender = st.selectbox(
+                    "Gender",
+                    [
+                        "Female",
+                        "Male",
+                        "Other"
+                    ]
+                )
+
+                phone = st.text_input(
+                    "Phone Number"
+                )
+
+                email = st.text_input(
+                    "Email"
+                )
+
+                blood_group = st.selectbox(
+                    "Blood Group",
+                    [
+                        "Unknown",
+                        "A+",
+                        "A-",
+                        "B+",
+                        "B-",
+                        "AB+",
+                        "AB-",
+                        "O+",
+                        "O-"
+                    ]
+                )
+
+            with col2:
+
+                emergency_contact = st.text_input(
+                    "Emergency Contact"
+                )
+
+                address = st.text_area(
+                    "Address"
+                )
+
+                dental_history = st.text_area(
+                    "Dental History"
+                )
+
+                allergies = st.text_area(
+                    "Allergies"
+                )
+
+            submitted = st.form_submit_button(
+                "💾 Register Patient",
+                use_container_width=True
+            )
+
+            if submitted:
+
+                if not full_name.strip():
+
+                    st.error(
+                        "Please enter the patient's name."
+                    )
+
+                else:
+
+                    patient_id = database.add_patient(
+                        full_name,
+                        str(date_of_birth),
+                        gender,
+                        phone,
+                        email,
+                        emergency_contact,
+                        dental_history,
+                        allergies,
+                        address,
+                        blood_group
+                    )
+
+                    st.success(
+                        f"✅ Patient registered successfully! "
+                        f"Patient ID: {patient_id}"
+                    )
+
+                    st.balloons()
+
+
+    # --------------------------------------------------------
+    # SEARCH
+    # --------------------------------------------------------
+
+    with tab2:
+
+        st.subheader("🔍 Search Patient")
+
+        search_text = st.text_input(
+            "Search by Patient ID, Name or Phone"
+        )
+
+        if search_text:
+
+            results = database.search_patients(
+                search_text
+            )
+
+            if results:
+
+                for patient in results:
+
+                    st.markdown(
+                        f"""
+                        <div class="patient-card">
+                        <h3>👤 {patient[1]}</h3>
+
+                        <b>Patient ID:</b> {patient[0]}<br>
+                        <b>Date of Birth:</b> {patient[2]}<br>
+                        <b>Gender:</b> {patient[3]}<br>
+                        <b>Phone:</b> {patient[4]}<br>
+                        <b>Email:</b> {patient[5]}<br>
+                        <b>Blood Group:</b> {patient[6]}<br>
+                        <b>Registered:</b> {patient[7]}
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+            else:
+
+                st.warning(
+                    "No patient found."
+                )
+
+
+    # --------------------------------------------------------
+    # ALL PATIENTS
+    # --------------------------------------------------------
+
+    with tab3:
+
+        st.subheader("📋 Registered Patients")
+
+        patients = database.get_patients()
+
+        if patients:
+
+            import pandas as pd
+
+            df = pd.DataFrame(
+                patients,
+                columns=[
+                    "Patient ID",
+                    "Name",
+                    "Date of Birth",
+                    "Gender",
+                    "Phone",
+                    "Email",
+                    "Blood Group",
+                    "Registration Date"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "No patients have been registered yet."
+            )
+
+
+# ============================================================
+# OTHER MODULES
+# ============================================================
+
+elif menu == "📅 Appointments":
+
+    st.title("📅 Appointment Management")
+
+    st.info(
+        "Appointment module is the next development stage."
+    )
+
+
+elif menu == "🦷 Orthodontics":
+
+    st.title("🦷 Orthodontic Management")
+
+    st.info(
+        "Braces, aligners, retainers and treatment "
+        "tracking will be added."
+    )
+
+
+elif menu == "🪥 Dental Care":
+
+    st.title("🪥 Dental Care")
+
+    st.info(
+        "Dental assessment and oral-hygiene features "
+        "will be added."
+    )
+
+
+elif menu == "🔔 Reminders":
+
+    st.title("🔔 Smart Reminders")
+
+    st.info(
+        "Smart reminders will be connected to appointments "
+        "and dental-care records."
+    )
+
+
+elif menu == "💳 Billing":
+
+    st.title("💳 Billing & Payments")
+
+    st.info(
+        "Billing and payment tracking will be added."
+    )
+
+
+elif menu == "📦 Inventory":
+
+    st.title("📦 Clinic Inventory")
+
+    st.info(
+        "Inventory and equipment management will be added."
+    )
+
+
+elif menu == "🤖 AI Care Center":
+
+    st.title("🤖 AI Care Center")
+
+    st.info(
+        "Hugging Face AI-assisted features will be "
+        "integrated after the core database system."
+    )
+
+
 elif menu == "📊 Reports":
-    st.title("📊 Clinic Reports & Analytics")
-    st.info("Reports and analytics will be connected next.")
+
+    st.title("📊 Reports & Analytics")
+
+    st.info(
+        "Clinic analytics and reports will be connected "
+        "to the database."
+    )
+
 
 elif menu == "⚙️ Administration":
+
     st.title("⚙️ Administration")
-    st.info("Admin controls will be connected later.")
+
+    st.info(
+        "Administrative controls will be added later."
+    )
 
 
-# -----------------------------
-# Footer
-# -----------------------------
+# ============================================================
+# FOOTER
+# ============================================================
 
 st.markdown(
     '<div class="footer">'
