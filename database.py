@@ -1,6 +1,7 @@
 import sqlite3
 from datetime import datetime
 
+
 DB_NAME = "dental_clinic.db"
 
 
@@ -15,21 +16,18 @@ def initialize_database():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            patient_id TEXT UNIQUE,
+            patient_id TEXT UNIQUE NOT NULL,
             full_name TEXT NOT NULL,
             date_of_birth TEXT,
             gender TEXT,
             phone TEXT,
             email TEXT,
-            address TEXT,
             emergency_contact TEXT,
-            allergies TEXT,
             dental_history TEXT,
-            medical_history TEXT,
-            treatment_history TEXT,
-            prescription_notes TEXT,
-            xray_notes TEXT,
-            created_at TEXT
+            allergies TEXT,
+            address TEXT,
+            blood_group TEXT,
+            registration_date TEXT
         )
     """)
 
@@ -41,12 +39,20 @@ def generate_patient_id():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM patients")
-    count = cursor.fetchone()[0]
+    cursor.execute(
+        "SELECT MAX(id) FROM patients"
+    )
+
+    result = cursor.fetchone()[0]
 
     conn.close()
 
-    return f"DP{1001 + count}"
+    if result is None:
+        number = 1001
+    else:
+        number = 1001 + result
+
+    return f"DP{number}"
 
 
 def add_patient(
@@ -55,19 +61,21 @@ def add_patient(
     gender,
     phone,
     email,
-    address,
     emergency_contact,
-    allergies,
     dental_history,
-    medical_history,
-    treatment_history,
-    prescription_notes,
-    xray_notes
+    allergies,
+    address,
+    blood_group
 ):
+
     conn = get_connection()
     cursor = conn.cursor()
 
     patient_id = generate_patient_id()
+
+    registration_date = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
 
     cursor.execute("""
         INSERT INTO patients (
@@ -77,17 +85,14 @@ def add_patient(
             gender,
             phone,
             email,
-            address,
             emergency_contact,
-            allergies,
             dental_history,
-            medical_history,
-            treatment_history,
-            prescription_notes,
-            xray_notes,
-            created_at
+            allergies,
+            address,
+            blood_group,
+            registration_date
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         patient_id,
         full_name,
@@ -95,15 +100,12 @@ def add_patient(
         gender,
         phone,
         email,
-        address,
         emergency_contact,
-        allergies,
         dental_history,
-        medical_history,
-        treatment_history,
-        prescription_notes,
-        xray_notes,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        allergies,
+        address,
+        blood_group,
+        registration_date
     ))
 
     conn.commit()
@@ -113,18 +115,20 @@ def add_patient(
 
 
 def get_patients():
-    conn = get_connection()
 
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
         SELECT
             patient_id,
             full_name,
+            date_of_birth,
             gender,
             phone,
             email,
-            created_at
+            blood_group,
+            registration_date
         FROM patients
         ORDER BY id DESC
     """)
@@ -137,27 +141,31 @@ def get_patients():
 
 
 def search_patients(search_text):
-    conn = get_connection()
 
+    conn = get_connection()
     cursor = conn.cursor()
+
+    search = f"%{search_text}%"
 
     cursor.execute("""
         SELECT
             patient_id,
             full_name,
+            date_of_birth,
             gender,
             phone,
             email,
-            created_at
+            blood_group,
+            registration_date
         FROM patients
         WHERE patient_id LIKE ?
            OR full_name LIKE ?
            OR phone LIKE ?
         ORDER BY id DESC
     """, (
-        f"%{search_text}%",
-        f"%{search_text}%",
-        f"%{search_text}%"
+        search,
+        search,
+        search
     ))
 
     patients = cursor.fetchall()
@@ -168,8 +176,8 @@ def search_patients(search_text):
 
 
 def get_patient(patient_id):
-    conn = get_connection()
 
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -182,20 +190,4 @@ def get_patient(patient_id):
 
     conn.close()
 
-    return patient
-
-
-def delete_patient(patient_id):
-    conn = get_connection()
-
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        DELETE FROM patients
-        WHERE patient_id = ?
-    """, (patient_id,))
-
-    conn.commit()
-    conn.close()
-  
     return patient
