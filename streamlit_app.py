@@ -665,135 +665,1113 @@ elif menu == "🔔 Reminders":
                 st.rerun()
         else: st.info("No reminders.")
 
-# ============================ BILLING ============================
+# ============================================================
+# BILLING, PAYMENTS & INSURANCE
+# ============================================================
 
 elif menu == "💳 Billing":
-    st.markdown('<div class="section">💳 Billing, Payments & Insurance</div>',unsafe_allow_html=True)
-    t1,t2,t3,t4=st.tabs(["🧾 Bills","💵 Payments","📊 Installments","🛡️ Insurance"])
-    ps=patients()
+
+    st.markdown(
+        '<div class="section">💳 Billing, Payments & Insurance</div>',
+        unsafe_allow_html=True
+    )
+
+    t1, t2, t3, t4 = st.tabs(
+        [
+            "🧾 Bills",
+            "💵 Payments",
+            "📊 Installments",
+            "🛡️ Insurance"
+        ]
+    )
+
+    # ========================================================
+    # PATIENT LIST
+    # ========================================================
+
+    ps = patient_names()
+
+    # ========================================================
+    # TAB 1 — BILLS
+    # ========================================================
 
     with t1:
-        if not ps: st.warning("Register a patient first.")
-        else:
-            with st.form("bill"):
-                p=st.selectbox("Patient",ps,format_func=label_patient,key="bill_patient")
-                desc=st.text_input("Bill Description")
-                total=st.number_input("Total Amount (₹)",0.0,10000000.0,0.0)
-                paid=st.number_input("Initial Paid Amount (₹)",0.0,10000000.0,0.0)
-                save=st.form_submit_button("🧾 Create Bill",use_container_width=True)
-            if save:
-                if paid>total: st.error("Paid amount cannot exceed total.")
-                else:
-                    bid=new_id("BILL","bills")
-                    bal=total-paid
-                    status="Paid" if bal==0 else ("Partially Paid" if paid>0 else "Pending")
-                    execute("INSERT INTO bills(bill_id,patient_id,bill_date,description,total_amount,paid_amount,balance,status) VALUES(?,?,?,?,?,?,?,?)",(bid,p[0],str(date.today()),desc,total,paid,bal,status))
-                    st.success(f"Bill created: {bid}")
 
-            rows=execute("""SELECT b.bill_id,b.patient_id,p.full_name,b.bill_date,b.description,b.total_amount,b.paid_amount,b.balance,b.status
-                            FROM bills b LEFT JOIN patients p ON b.patient_id=p.patient_id ORDER BY b.id DESC""",fetch=True)
-            if rows: st.dataframe(pd.DataFrame(rows,columns=["Bill","Patient ID","Patient","Date","Description","Total","Paid","Balance","Status"]),use_container_width=True,hide_index=True)
+        st.subheader("🧾 Create New Bill")
+
+        if not ps:
+
+            st.warning(
+                "No patients registered. Please register a patient first."
+            )
+
+        else:
+
+            with st.form("bill_form"):
+
+                p = st.selectbox(
+                    "Select Patient",
+                    ps,
+                    format_func=patient_label,
+                    key="bill_patient"
+                )
+
+                desc = st.text_input(
+                    "Bill / Treatment Description"
+                )
+
+                total = st.number_input(
+                    "Total Amount (₹)",
+                    min_value=0.0,
+                    max_value=10000000.0,
+                    value=0.0,
+                    step=100.0
+                )
+
+                paid = st.number_input(
+                    "Initial Paid Amount (₹)",
+                    min_value=0.0,
+                    max_value=10000000.0,
+                    value=0.0,
+                    step=100.0
+                )
+
+                save_bill = st.form_submit_button(
+                    "🧾 Create Bill",
+                    use_container_width=True
+                )
+
+            if save_bill:
+
+                if not desc.strip():
+
+                    st.error(
+                        "Please enter a bill description."
+                    )
+
+                elif paid > total:
+
+                    st.error(
+                        "Paid amount cannot exceed total amount."
+                    )
+
+                else:
+
+                    bid = generate_id(
+                        "BILL",
+                        "bills",
+                        "bill_id"
+                    )
+
+                    balance = total - paid
+
+                    if balance <= 0:
+
+                        status = "Paid"
+
+                    elif paid > 0:
+
+                        status = "Partially Paid"
+
+                    else:
+
+                        status = "Pending"
+
+                    execute(
+                        """
+                        INSERT INTO bills
+                        (
+                            bill_id,
+                            patient_id,
+                            bill_date,
+                            description,
+                            total_amount,
+                            paid_amount,
+                            balance,
+                            status
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            bid,
+                            p[0],
+                            str(date.today()),
+                            desc,
+                            total,
+                            paid,
+                            balance,
+                            status
+                        )
+                    )
+
+                    st.success(
+                        f"✅ Bill created successfully: {bid}"
+                    )
+
+            st.divider()
+
+            st.subheader("📋 Bill Records")
+
+            rows = execute(
+                """
+                SELECT
+                    b.bill_id,
+                    b.patient_id,
+                    p.full_name,
+                    b.bill_date,
+                    b.description,
+                    b.total_amount,
+                    b.paid_amount,
+                    b.balance,
+                    b.status
+                FROM bills b
+                LEFT JOIN patients p
+                    ON b.patient_id = p.patient_id
+                ORDER BY b.id DESC
+                """,
+                fetch=True
+            )
+
+            if rows:
+
+                df = pd.DataFrame(
+                    rows,
+                    columns=[
+                        "Bill ID",
+                        "Patient ID",
+                        "Patient",
+                        "Date",
+                        "Description",
+                        "Total (₹)",
+                        "Paid (₹)",
+                        "Balance (₹)",
+                        "Status"
+                    ]
+                )
+
+                st.dataframe(
+                    df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            else:
+
+                st.info(
+                    "No bills recorded yet."
+                )
+
+    # ========================================================
+    # TAB 2 — PAYMENTS
+    # ========================================================
 
     with t2:
-        bills=execute("SELECT bill_id,patient_id FROM bills WHERE balance>0 ORDER BY id DESC",fetch=True)
-        if not bills: st.info("No outstanding bills.")
+
+        st.subheader("💵 Record Payment")
+
+        bills = execute(
+            """
+            SELECT
+                bill_id,
+                patient_id,
+                balance
+            FROM bills
+            WHERE balance > 0
+            ORDER BY id DESC
+            """,
+            fetch=True
+        )
+
+        if not bills:
+
+            st.info(
+                "No outstanding bills available."
+            )
+
         else:
-            opts=[f"{r[0]} — {r[1]}" for r in bills]
-            sel=st.selectbox("Bill",opts)
-            b=bills[opts.index(sel)]
-            amount=st.number_input("Payment Amount (₹)",0.0,10000000.0,0.0)
-            method=st.selectbox("Payment Method",["Cash","UPI","Card","Bank Transfer","Other"])
-            notes=st.text_area("Payment Notes")
-            if st.button("💵 Record Payment",use_container_width=True):
-                balance=scalar("SELECT balance FROM bills WHERE bill_id=?",(b[0],))
-                if amount<=0: st.error("Enter a payment amount.")
-                elif amount>balance: st.error("Payment exceeds outstanding balance.")
+
+            bill_options = [
+                f"{row[0]} — Patient {row[1]} — Balance ₹{row[2]:.2f}"
+                for row in bills
+            ]
+
+            selected_bill = st.selectbox(
+                "Select Bill",
+                bill_options
+            )
+
+            selected_index = bill_options.index(
+                selected_bill
+            )
+
+            selected_bill_data = bills[
+                selected_index
+            ]
+
+            bill_id = selected_bill_data[0]
+            patient_id = selected_bill_data[1]
+            outstanding = float(
+                selected_bill_data[2]
+            )
+
+            st.info(
+                f"Outstanding Balance: ₹{outstanding:.2f}"
+            )
+
+            amount = st.number_input(
+                "Payment Amount (₹)",
+                min_value=0.0,
+                max_value=outstanding,
+                value=0.0,
+                step=100.0
+            )
+
+            method = st.selectbox(
+                "Payment Method",
+                [
+                    "Cash",
+                    "UPI",
+                    "Debit Card",
+                    "Credit Card",
+                    "Bank Transfer",
+                    "Other"
+                ]
+            )
+
+            notes = st.text_area(
+                "Payment Notes"
+            )
+
+            record_payment = st.button(
+                "💵 Record Payment",
+                use_container_width=True
+            )
+
+            if record_payment:
+
+                if amount <= 0:
+
+                    st.error(
+                        "Please enter a valid payment amount."
+                    )
+
+                elif amount > outstanding:
+
+                    st.error(
+                        "Payment exceeds outstanding balance."
+                    )
+
                 else:
-                    payid=new_id("PAY","payments")
-                    execute("INSERT INTO payments(payment_id,bill_id,patient_id,payment_date,amount,payment_method,notes) SELECT ?,bill_id,patient_id,?,?,?,?,? FROM bills WHERE bill_id=?",(payid,str(date.today()),amount,method,notes,b[0]))
-                    # Correct the bill using a direct update.
-                    new_paid=scalar("SELECT paid_amount FROM bills WHERE bill_id=?",(b[0],))+amount
-                    new_balance=balance-amount
-                    status="Paid" if new_balance<=0 else "Partially Paid"
-                    execute("UPDATE bills SET paid_amount=?,balance=?,status=? WHERE bill_id=?",(new_paid,new_balance,status,b[0]))
-                    st.success(f"Payment recorded: {payid}")
-                    st.rerun()
+
+                    pay_id = generate_id(
+                        "PAY",
+                        "payments",
+                        "payment_id"
+                    )
+
+                    execute(
+                        """
+                        INSERT INTO payments
+                        (
+                            payment_id,
+                            bill_id,
+                            patient_id,
+                            payment_date,
+                            amount,
+                            payment_method,
+                            notes
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            pay_id,
+                            bill_id,
+                            patient_id,
+                            str(date.today()),
+                            amount,
+                            method,
+                            notes
+                        )
+                    )
+
+                    old_paid = scalar(
+                        """
+                        SELECT paid_amount
+                        FROM bills
+                        WHERE bill_id = ?
+                        """,
+                        (bill_id,)
+                    )
+
+                    old_paid = float(
+                        old_paid or 0
+                    )
+
+                    new_paid = old_paid + amount
+
+                    new_balance = max(
+                        0,
+                        outstanding - amount
+                    )
+
+                    if new_balance <= 0:
+
+                        new_status = "Paid"
+
+                    else:
+
+                        new_status = "Partially Paid"
+
+                    execute(
+                        """
+                        UPDATE bills
+                        SET
+                            paid_amount = ?,
+                            balance = ?,
+                            status = ?
+                        WHERE bill_id = ?
+                        """,
+                        (
+                            new_paid,
+                            new_balance,
+                            new_status,
+                            bill_id
+                        )
+                    )
+
+                    st.success(
+                        f"✅ Payment recorded successfully: {pay_id}"
+                    )
+
+            st.divider()
+
+            st.subheader("📋 Payment History")
+
+            payment_rows = execute(
+                """
+                SELECT
+                    payment_id,
+                    bill_id,
+                    patient_id,
+                    payment_date,
+                    amount,
+                    payment_method,
+                    notes
+                FROM payments
+                ORDER BY id DESC
+                """,
+                fetch=True
+            )
+
+            if payment_rows:
+
+                payment_df = pd.DataFrame(
+                    payment_rows,
+                    columns=[
+                        "Payment ID",
+                        "Bill ID",
+                        "Patient ID",
+                        "Date",
+                        "Amount (₹)",
+                        "Method",
+                        "Notes"
+                    ]
+                )
+
+                st.dataframe(
+                    payment_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            else:
+
+                st.info(
+                    "No payments recorded yet."
+                )
+
+    # ========================================================
+    # TAB 3 — INSTALLMENTS
+    # ========================================================
 
     with t3:
-        rows=execute("""SELECT b.bill_id,b.patient_id,p.full_name,b.total_amount,b.paid_amount,b.balance,b.status
-                        FROM bills b LEFT JOIN patients p ON b.patient_id=p.patient_id ORDER BY b.id DESC""",fetch=True)
+
+        st.subheader(
+            "📊 Installment & Balance Tracking"
+        )
+
+        rows = execute(
+            """
+            SELECT
+                b.bill_id,
+                b.patient_id,
+                p.full_name,
+                b.description,
+                b.total_amount,
+                b.paid_amount,
+                b.balance,
+                b.status
+            FROM bills b
+            LEFT JOIN patients p
+                ON b.patient_id = p.patient_id
+            ORDER BY b.id DESC
+            """,
+            fetch=True
+        )
+
         if rows:
-            st.subheader("Installment / Balance Tracking")
-            st.dataframe(pd.DataFrame(rows,columns=["Bill","Patient ID","Patient","Total","Paid","Balance","Status"]),use_container_width=True,hide_index=True)
-        else: st.info("No bills.")
+
+            df = pd.DataFrame(
+                rows,
+                columns=[
+                    "Bill ID",
+                    "Patient ID",
+                    "Patient",
+                    "Description",
+                    "Total (₹)",
+                    "Paid (₹)",
+                    "Balance (₹)",
+                    "Status"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            total_billed = sum(
+                float(row[4])
+                for row in rows
+            )
+
+            total_paid = sum(
+                float(row[5])
+                for row in rows
+            )
+
+            total_balance = sum(
+                float(row[6])
+                for row in rows
+            )
+
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+
+                st.metric(
+                    "Total Billed",
+                    f"₹{total_billed:,.2f}"
+                )
+
+            with c2:
+
+                st.metric(
+                    "Total Paid",
+                    f"₹{total_paid:,.2f}"
+                )
+
+            with c3:
+
+                st.metric(
+                    "Outstanding",
+                    f"₹{total_balance:,.2f}"
+                )
+
+        else:
+
+            st.info(
+                "No bills available for installment tracking."
+            )
+
+    # ========================================================
+    # TAB 4 — INSURANCE
+    # ========================================================
 
     with t4:
-        if not ps: st.warning("Register a patient first.")
-        else:
-            with st.form("insurance"):
-                p=st.selectbox("Patient",ps,format_func=label_patient,key="insurance_patient")
-                company=st.text_input("Insurance Company")
-                policy=st.text_input("Policy Number")
-                amount=st.number_input("Claim Amount (₹)",0.0,10000000.0,0.0)
-                status=st.selectbox("Claim Status",["Pending","Submitted","Approved","Rejected","Settled"])
-                notes=st.text_area("Notes")
-                save=st.form_submit_button("🛡️ Save Claim",use_container_width=True)
-            if save:
-                cid=new_id("CLM","insurance_claims")
-              execute("INSERT INTO insurance_claims(claim_id,patient_id,insurance_company,policy_number,claim_amount,claim_date,status,notes) VALUES(?,?,?,?,?,?,?,?)",(cid,p[0],company,policy,amount,str(date.today()),status,notes))
-                st.success(f"Claim saved: {cid}")
-            rows=execute("""SELECT c.claim_id,c.patient_id,p.full_name,c.insurance_company,c.policy_number,c.claim_amount,c.claim_date,c.status
-                            FROM insurance_claims c LEFT JOIN patients p ON c.patient_id=p.patient_id ORDER BY c.id DESC""",fetch=True)
-            if rows: st.dataframe(pd.DataFrame(rows,columns=["Claim","Patient ID","Patient","Company","Policy","Amount","Date","Status"]),use_container_width=True,hide_index=True)
 
-# ============================ INVENTORY ============================
+        st.subheader(
+            "🛡️ Insurance Claim Management"
+        )
+
+        if not ps:
+
+            st.warning(
+                "No patients registered. Please register a patient first."
+            )
+
+        else:
+
+            with st.form("insurance_claim_form"):
+
+                p = st.selectbox(
+                    "Select Patient",
+                    ps,
+                    format_func=patient_label,
+                    key="insurance_patient"
+                )
+
+                company = st.text_input(
+                    "Insurance Company"
+                )
+
+                policy = st.text_input(
+                    "Policy Number"
+                )
+
+                amount = st.number_input(
+                    "Claim Amount (₹)",
+                    min_value=0.0,
+                    max_value=10000000.0,
+                    value=0.0,
+                    step=100.0
+                )
+
+                status = st.selectbox(
+                    "Claim Status",
+                    [
+                        "Pending",
+                        "Submitted",
+                        "Approved",
+                        "Rejected",
+                        "Settled"
+                    ]
+                )
+
+                notes = st.text_area(
+                    "Claim Notes"
+                )
+
+                save_claim = st.form_submit_button(
+                    "🛡️ Save Insurance Claim",
+                    use_container_width=True
+                )
+
+            if save_claim:
+
+                if not company.strip():
+
+                    st.error(
+                        "Insurance company name is required."
+                    )
+
+                elif not policy.strip():
+
+                    st.error(
+                        "Policy number is required."
+                    )
+
+                else:
+
+                    cid = generate_id(
+                        "CLM",
+                        "insurance_claims",
+                        "claim_id"
+                    )
+
+                    execute(
+                        """
+                        INSERT INTO insurance_claims
+                        (
+                            claim_id,
+                            patient_id,
+                            insurance_company,
+                            policy_number,
+                            claim_amount,
+                            claim_date,
+                            status,
+                            notes
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            cid,
+                            p[0],
+                            company,
+                            policy,
+                            amount,
+                            str(date.today()),
+                            status,
+                            notes
+                        )
+                    )
+
+                    st.success(
+                        f"✅ Insurance claim saved successfully: {cid}"
+                    )
+
+            st.divider()
+
+            st.subheader(
+                "📋 Insurance Claim Records"
+            )
+
+            rows = execute(
+                """
+                SELECT
+                    c.claim_id,
+                    c.patient_id,
+                    p.full_name,
+                    c.insurance_company,
+                    c.policy_number,
+                    c.claim_amount,
+                    c.claim_date,
+                    c.status,
+                    c.notes
+                FROM insurance_claims c
+                LEFT JOIN patients p
+                    ON c.patient_id = p.patient_id
+                ORDER BY c.id DESC
+                """,
+                fetch=True
+            )
+
+            if rows:
+
+                df = pd.DataFrame(
+                    rows,
+                    columns=[
+                        "Claim ID",
+                        "Patient ID",
+                        "Patient",
+                        "Insurance Company",
+                        "Policy Number",
+                        "Amount (₹)",
+                        "Date",
+                        "Status",
+                        "Notes"
+                    ]
+                )
+
+                st.dataframe(
+                    df,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            else:
+
+                st.info(
+                    "No insurance claims recorded yet."
+                )
+
+
+# ============================================================
+# INVENTORY
+# ============================================================
 
 elif menu == "📦 Inventory":
-    st.markdown('<div class="section">📦 Inventory & Equipment</div>',unsafe_allow_html=True)
-    t1,t2,t3=st.tabs(["📦 Stock","⚠️ Low Stock","🛠️ Equipment"])
+
+    st.markdown(
+        '<div class="section">📦 Inventory & Equipment</div>',
+        unsafe_allow_html=True
+    )
+
+    t1, t2, t3 = st.tabs(
+        [
+            "📦 Stock",
+            "⚠️ Low Stock",
+            "🛠️ Equipment"
+        ]
+    )
+
+    # ========================================================
+    # STOCK
+    # ========================================================
+
     with t1:
-        with st.form("inventory"):
-            c1,c2=st.columns(2)
+
+        with st.form("inventory_form"):
+
+            c1, c2 = st.columns(2)
+
             with c1:
-                name=st.text_input("Item Name")
-                cat=st.selectbox("Category",["Dental Consumable","Orthodontic","Cleaning","Office","Other"])
-                qty=st.number_input("Quantity",0,100000,0)
-                minimum=st.number_input("Minimum Stock",0,100000,5)
+
+                name = st.text_input(
+                    "Item Name"
+                )
+
+                cat = st.selectbox(
+                    "Category",
+                    [
+                        "Dental Consumable",
+                        "Orthodontic",
+                        "Cleaning",
+                        "Office",
+                        "Other"
+                    ]
+                )
+
+                qty = st.number_input(
+                    "Quantity",
+                    min_value=0,
+                    max_value=100000,
+                    value=0
+                )
+
+                minimum = st.number_input(
+                    "Minimum Stock",
+                    min_value=0,
+                    max_value=100000,
+                    value=5
+                )
+
             with c2:
-                price=st.number_input("Unit Price (₹)",0.0,1000000.0,0.0)
-                supplier=st.text_input("Supplier")
-            save=st.form_submit_button("💾 Add / Update Stock",use_container_width=True)
-        if save:
-            existing=execute("SELECT item_id,quantity FROM inventory WHERE item_name=?",(name,),True)
-            if existing:
-                execute("UPDATE inventory SET quantity=?,minimum_stock=?,unit_price=?,supplier=?,last_updated=? WHERE item_id=?",(qty,minimum,price,supplier,str(datetime.now()),existing[0][0]))
-                st.success("Inventory item updated.")
+
+                price = st.number_input(
+                    "Unit Price (₹)",
+                    min_value=0.0,
+                    max_value=1000000.0,
+                    value=0.0,
+                    step=10.0
+                )
+
+                supplier = st.text_input(
+                    "Supplier"
+                )
+
+            save_inventory = st.form_submit_button(
+                "💾 Add / Update Stock",
+                use_container_width=True
+            )
+
+        if save_inventory:
+
+            if not name.strip():
+
+                st.error(
+                    "Item name is required."
+                )
+
             else:
-                iid=new_id("INV","inventory")
-                execute("INSERT INTO inventory(item_id,item_name,category,quantity,minimum_stock,unit_price,supplier,last_updated) VALUES(?,?,?,?,?,?,?,?)",(iid,name,cat,qty,minimum,price,supplier,str(datetime.now())))
-                st.success(f"Inventory item added: {iid}")
-        rows=execute("SELECT item_id,item_name,category,quantity,minimum_stock,unit_price,supplier,last_updated FROM inventory ORDER BY item_name",fetch=True)
-        if rows: st.dataframe(pd.DataFrame(rows,columns=["ID","Item","Category","Qty","Minimum","Unit Price","Supplier","Updated"]),use_container_width=True,hide_index=True)
+
+                existing = execute(
+                    """
+                    SELECT item_id
+                    FROM inventory
+                    WHERE item_name = ?
+                    """,
+                    (name,),
+                    fetch=True
+                )
+
+                if existing:
+
+                    execute(
+                        """
+                        UPDATE inventory
+                        SET
+                            category = ?,
+                            quantity = ?,
+                            minimum_stock = ?,
+                            unit_price = ?,
+                            supplier = ?,
+                            last_updated = ?
+                        WHERE item_id = ?
+                        """,
+                        (
+                            cat,
+                            qty,
+                            minimum,
+                            price,
+                            supplier,
+                            str(datetime.now()),
+                            existing[0][0]
+                        )
+                    )
+
+                    st.success(
+                        "✅ Inventory item updated."
+                    )
+
+                else:
+
+                    iid = generate_id(
+                        "INV",
+                        "inventory",
+                        "item_id"
+                    )
+
+                    execute(
+                        """
+                        INSERT INTO inventory
+                        (
+                            item_id,
+                            item_name,
+                            category,
+                            quantity,
+                            minimum_stock,
+                            unit_price,
+                            supplier,
+                            last_updated
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            iid,
+                            name,
+                            cat,
+                            qty,
+                            minimum,
+                            price,
+                            supplier,
+                            str(datetime.now())
+                        )
+                    )
+
+                    st.success(
+                        f"✅ Inventory item added: {iid}"
+                    )
+
+        rows = execute(
+            """
+            SELECT
+                item_id,
+                item_name,
+                category,
+                quantity,
+                minimum_stock,
+                unit_price,
+                supplier,
+                last_updated
+            FROM inventory
+            ORDER BY item_name
+            """,
+            fetch=True
+        )
+
+        if rows:
+
+            df = pd.DataFrame(
+                rows,
+                columns=[
+                    "ID",
+                    "Item",
+                    "Category",
+                    "Quantity",
+                    "Minimum",
+                    "Unit Price",
+                    "Supplier",
+                    "Updated"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "No inventory items recorded."
+            )
+
+    # ========================================================
+    # LOW STOCK
+    # ========================================================
+
     with t2:
-        rows=execute("SELECT item_id,item_name,category,quantity,minimum_stock,supplier FROM inventory WHERE quantity<=minimum_stock ORDER BY quantity",fetch=True)
-        if rows: st.dataframe(pd.DataFrame(rows,columns=["ID","Item","Category","Qty","Minimum","Supplier"]),use_container_width=True,hide_index=True)
-        else: st.success("No low-stock items.")
+
+        rows = execute(
+            """
+            SELECT
+                item_id,
+                item_name,
+                category,
+                quantity,
+                minimum_stock,
+                supplier
+            FROM inventory
+            WHERE quantity <= minimum_stock
+            ORDER BY quantity ASC
+            """,
+            fetch=True
+        )
+
+        if rows:
+
+            st.warning(
+                f"⚠️ {len(rows)} item(s) need stock attention."
+            )
+
+            df = pd.DataFrame(
+                rows,
+                columns=[
+                    "ID",
+                    "Item",
+                    "Category",
+                    "Quantity",
+                    "Minimum",
+                    "Supplier"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.success(
+                "✅ No low-stock items."
+            )
+            
+    # ========================================================
+    # EQUIPMENT
+    # ========================================================
+
     with t3:
-        with st.form("equipment"):
-            name=st.text_input("Equipment Name")
-            cat=st.selectbox("Equipment Category",["Dental Chair","X-Ray","Sterilizer","Scanner","Computer","Other"])
-            purchase=st.date_input("Purchase Date",date.today())
-            last=st.date_input("Last Maintenance",date.today())
-            nxt=st.date_input("Next Maintenance",date.today()+timedelta(days=180))
-            status=st.selectbox("Status",["Operational","Maintenance Due","Under Maintenance","Out of Service"])
-            notes=st.text_area("Notes")
-            save=st.form_submit_button("🛠️ Save Equipment",use_container_width=True)
-        if save:
-            eid=new_id("EQ","equipment")
-            execute("INSERT INTO equipment(equipment_id,equipment_name,category,purchase_date,last_maintenance,next_maintenance,status,notes) VALUES(?,?,?,?,?,?,?,?)",(eid,name,cat,str(purchase),str(last),str(nxt),status,notes))
-            st.success(f"Equipment saved: {eid}")
-        rows=execute("SELECT equipment_id,equipment_name,category,purchase_date,last_maintenance,next_maintenance,status,notes FROM equipment ORDER BY id DESC",fetch=True)
-        if rows: st.dataframe(pd.DataFrame(rows,columns=["ID","Equipment","Category","Purchase","Last Maintenance","Next Maintenance","Status","Notes"]),use_container_width=True,hide_index=True)
+
+        with st.form("equipment_form"):
+
+            name = st.text_input(
+                "Equipment Name"
+            )
+
+            cat = st.selectbox(
+                "Equipment Category",
+                [
+                    "Dental Chair",
+                    "X-Ray",
+                    "Sterilizer",
+                    "Scanner",
+                    "Computer",
+                    "Other"
+                ]
+            )
+
+            purchase = st.date_input(
+                "Purchase Date",
+                date.today()
+            )
+
+            last = st.date_input(
+                "Last Maintenance",
+                date.today()
+            )
+
+            nxt = st.date_input(
+                "Next Maintenance",
+                date.today() + timedelta(days=180)
+            )
+
+            status = st.selectbox(
+                "Status",
+                [
+                    "Operational",
+                    "Maintenance Due",
+                    "Under Maintenance",
+                    "Out of Service"
+                ]
+            )
+
+            notes = st.text_area(
+                "Notes"
+            )
+
+            save_equipment = st.form_submit_button(
+                "🛠️ Save Equipment",
+                use_container_width=True
+            )
+
+        if save_equipment:
+
+            if not name.strip():
+
+                st.error(
+                    "Equipment name is required."
+                )
+
+            else:
+
+                eid = generate_id(
+                    "EQ",
+                    "equipment",
+                    "equipment_id"
+                )
+
+                execute(
+                    """
+                    INSERT INTO equipment
+                    (
+                        equipment_id,
+                        equipment_name,
+                        category,
+                        purchase_date,
+                        last_maintenance,
+                        next_maintenance,
+                        status,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        eid,
+                        name,
+                        cat,
+                        str(purchase),
+                        str(last),
+                        str(nxt),
+                        status,
+                        notes
+                    )
+                )
+
+                st.success(
+                    f"✅ Equipment saved: {eid}"
+                )
+
+        rows = execute(
+            """
+            SELECT
+                equipment_id,
+                equipment_name,
+                category,
+                purchase_date,
+                last_maintenance,
+                next_maintenance,
+                status,
+                notes
+            FROM equipment
+            ORDER BY id DESC
+            """,
+            fetch=True
+        )
+
+        if rows:
+
+            df = pd.DataFrame(
+                rows,
+                columns=[
+                    "ID",
+                    "Equipment",
+                    "Category",
+                    "Purchase",
+                    "Last Maintenance",
+                    "Next Maintenance",
+                    "Status",
+                    "Notes"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "No equipment records yet."
+            )
+
+
 
 # ========================= AI CARE CENTER =========================
 
