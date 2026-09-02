@@ -1997,7 +1997,6 @@ elif menu == "⚙️ Administration":
         """)
 
 # --------------------------- FOOTER ---------------------------
-
 st.markdown("""
 <div class="card" style="text-align:center;margin-top:35px;">
 <b>🦷 AI-Dental Pro</b><br>
@@ -2005,6 +2004,3 @@ Developed by <b>Rashpreet Kaur Arora</b> | BCA 2nd Year<br>
 <span class="small">Academic Prototype — AI-assisted analysis only</span>
 </div>
 """,unsafe_allow_html=True)
-
-            if st.button("💾 Update Status",use_container_width=True):
-                execute("UPDATE appointments SET status=?,notes=? WHERE appointment_id=?",(
