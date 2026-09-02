@@ -5,4 +5,3 @@ plotly
 Pillow
 scikit-learn
 requests
-huggingface_hub
