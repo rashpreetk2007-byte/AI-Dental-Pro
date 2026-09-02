@@ -421,19 +421,39 @@ elif menu == "📅 Appointments":
                         execute("UPDATE appointments SET status='Completed' WHERE appointment_id=?",(r[0],)); st.rerun()
 
     with t4:
-        rows=execute("SELECT appointment_id,patient_id,appointment_date,appointment_time,status FROM appointments ORDER BY id DESC LIMIT 200",fetch=True)
-        if rows:
-            opts=[f"{r[0]} | {r[1]} | {r[2]} {r[3]} | {r[4]}" for r in rows]
-            sel=st.selectbox("Appointment",opts)
-            r=rows[opts.index(sel)]
-            status=st.selectbox("New Status",["Scheduled","In Progress","Completed","Cancelled","No Show"])
-            reason=st.text_area("Reason / note")
-            if st.button("💾 Update Status",use_container_width=True):
-                execute("UPDATE appointments SET status=?,notes=? WHERE appointment_id=?",(status,reason,r[0]))
-                st.success("Appointment updated.")
-                st.rerun()
-        else: st.info("No appointments.")
+    rows = execute(
+        "SELECT appointment_id,patient_id,appointment_date,appointment_time,status "
+        "FROM appointments ORDER BY id DESC LIMIT 200",
+        fetch=True
+    )
 
+    if rows:
+        opts = [
+            f"{r[0]} | {r[1]} | {r[2]} {r[3]} | {r[4]}"
+            for r in rows
+        ]
+
+        sel = st.selectbox("Appointment", opts)
+        r = rows[opts.index(sel)]
+
+        status = st.selectbox(
+            "New Status",
+            ["Scheduled", "In Progress", "Completed", "Cancelled", "No Show"]
+        )
+
+        reason = st.text_area("Reason / note")
+
+        if st.button("💾 Update Status", use_container_width=True):
+            execute(
+                "UPDATE appointments SET status=?, notes=? WHERE appointment_id=?",
+                (status, reason, r[0])
+            )
+
+            st.success("Appointment updated.")
+            st.rerun()
+
+    else:
+        st.info("No appointments.")
 # ========================= ORTHODONTICS =========================
 
 elif menu == "🦷 Orthodontics":
