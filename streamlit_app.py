@@ -1146,10 +1146,12 @@ elif menu == "💳 Billing":
 
         else:
 
-            bill_options = [
-                f"{r[0]} — {r[1]} — Balance ₹{r[2]:.2f}"
-                for r in bills
-            ]
+            bill_options = []
+
+            for bill in bills:
+                bill_options.append(
+                    f"{bill[0]} — {bill[1]} — Balance ₹{bill[2]:.2f}"
+                )
 
             selected_bill = st.selectbox(
                 "Select Bill",
@@ -1157,9 +1159,11 @@ elif menu == "💳 Billing":
                 key="payment_bill"
             )
 
-            selected_bill_row = bills[
-                bill_options.index(selected_bill)
-            ]
+            selected_index = bill_options.index(
+                selected_bill
+            )
+
+            selected_bill_row = bills[selected_index]
 
             bill_id = selected_bill_row[0]
             patient_id = selected_bill_row[1]
@@ -1189,16 +1193,18 @@ elif menu == "💳 Billing":
                 ],
                 key="payment_method"
             )
-            
-payment_notes = st.text_area(
+
+            payment_notes = st.text_area(
                 "Payment Notes",
                 key="payment_notes"
             )
 
-            if st.button(
+            payment_button = st.button(
                 "💵 Record Payment",
                 use_container_width=True
-            ):
+            )
+
+            if payment_button:
 
                 if amount <= 0:
 
@@ -1253,12 +1259,18 @@ payment_notes = st.text_area(
                     )
 
                     new_paid = float(old_paid) + amount
-                    new_balance = current_balance - amount
+
+                    new_balance = (
+                        current_balance - amount
+                    )
 
                     if new_balance <= 0:
+
                         new_balance = 0.0
                         new_status = "Paid"
+
                     else:
+
                         new_status = "Partially Paid"
 
                     execute(
@@ -1279,10 +1291,14 @@ payment_notes = st.text_area(
                     )
 
                     st.success(
-                        f"Payment recorded successfully: {payment_id}"
+                        f"Payment recorded: {payment_id}"
                     )
 
                     st.rerun()
+
+                    
+                    
+
 
     # ========================================================
     # INSTALLMENTS
