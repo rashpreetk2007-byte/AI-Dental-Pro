@@ -868,3 +868,1844 @@ elif menu == "👤 Patients":
                     "Registered"
                 ]
             )
+st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "No patients registered yet."
+            )
+
+    # --------------------------------------------------------
+    # PROFILE
+    # --------------------------------------------------------
+
+    with tab4:
+
+        patients = patient_names()
+
+        if patients:
+
+            selected = st.selectbox(
+                "Select Patient",
+                patients,
+                format_func=patient_label
+            )
+
+            patient_id = selected[0]
+
+            patient = execute(
+                """
+                SELECT *
+                FROM patients
+                WHERE patient_id = ?
+                """,
+                (patient_id,),
+                fetch=True
+            )
+
+            if patient:
+
+                p = patient[0]
+
+                c1, c2 = st.columns(2)
+
+                with c1:
+
+                    st.subheader(
+                        f"👤 {p[2]}"
+                    )
+
+                    st.write(
+                        f"**Patient ID:** {p[1]}"
+                    )
+
+                    st.write(
+                        f"**Date of Birth:** {p[3]}"
+                    )
+
+                    st.write(
+                        f"**Gender:** {p[4]}"
+                    )
+
+                    st.write(
+                        f"**Phone:** {p[5]}"
+                    )
+
+                    st.write(
+                        f"**Email:** {p[6]}"
+                    )
+
+                    st.write(
+                        f"**Blood Group:** {p[12]}"
+                    )
+
+                with c2:
+
+                    st.write(
+                        f"**Emergency Contact:** {p[7]}"
+                    )
+
+                    st.write(
+                        f"**Address:** {p[10]}"
+                    )
+
+                    st.write(
+                        f"**Dental History:** {p[8]}"
+                    )
+
+                    st.write(
+                        f"**Allergies:** {p[9]}"
+                    )
+
+                    st.write(
+                        f"**Registration:** {p[13]}"
+                    )
+
+        else:
+
+            st.warning(
+                "Register a patient first."
+            )
+            # ============================================================
+# APPOINTMENTS
+# ============================================================
+
+elif menu == "📅 Appointments":
+
+    st.markdown(
+        '<div class="section">📅 Appointment Management</div>',
+        unsafe_allow_html=True
+    )
+
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "➕ Book Appointment",
+            "📋 Appointment List",
+            "🎫 Queue"
+        ]
+    )
+
+    patients = patient_names()
+
+    with tab1:
+
+        if not patients:
+
+            st.warning(
+                "Please register a patient before booking."
+            )
+
+        else:
+
+            with st.form("appointment_form"):
+
+                selected = st.selectbox(
+                    "Patient",
+                    patients,
+                    format_func=patient_label
+                )
+
+                doctor = st.text_input(
+                    "Dentist / Orthodontist Name"
+                )
+
+                appointment_type = st.selectbox(
+                    "Appointment Type",
+                    [
+                        "Dental Consultation",
+                        "Dental Cleaning",
+                        "Toothache Consultation",
+                        "Dental Follow-up",
+                        "Orthodontic Consultation",
+                        "Braces Follow-up",
+                        "Aligner Follow-up",
+                        "Retainer Check",
+                        "Emergency Guidance"
+                    ]
+                )
+
+                c1, c2 = st.columns(2)
+
+                with c1:
+
+                    appointment_date = st.date_input(
+                        "Appointment Date",
+                        value=date.today()
+                    )
+
+                with c2:
+
+                    appointment_time = st.time_input(
+                        "Appointment Time"
+                    )
+
+                notes = st.text_area(
+                    "Notes"
+                )
+
+                submit = st.form_submit_button(
+                    "📅 Book Appointment",
+                    use_container_width=True
+                )
+
+                if submit:
+
+                    appointment_id = generate_id(
+                        "AP",
+                        "appointments",
+                        "appointment_id"
+                    )
+
+                    token = scalar(
+                        """
+                        SELECT COUNT(*)
+                        FROM appointments
+                        WHERE appointment_date = ?
+                        """,
+                        (str(appointment_date),)
+                    ) + 1
+
+                    execute(
+                        """
+                        INSERT INTO appointments (
+                            appointment_id,
+                            patient_id,
+                            doctor_name,
+                            appointment_type,
+                            appointment_date,
+                            appointment_time,
+                            token_number,
+                            status,
+                            notes,
+                            created_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            appointment_id,
+                            selected[0],
+                            doctor,
+                            appointment_type,
+                            str(appointment_date),
+                            str(appointment_time),
+                            token,
+                            "Scheduled",
+                            notes,
+                            datetime.now().strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            )
+                        )
+                    )
+
+                    st.success(
+                        "✅ Appointment booked successfully."
+                    )
+
+                    st.code(
+                        f"Appointment ID: {appointment_id}\n"
+                        f"Token Number: {token}"
+                    )
+
+    with tab2:
+
+        appointments = execute(
+            """
+            SELECT
+                appointment_id,
+                patient_id,
+                doctor_name,
+                appointment_type,
+                appointment_date,
+                appointment_time,
+                token_number,
+                status
+            FROM appointments
+            ORDER BY appointment_date DESC,
+                     appointment_time DESC
+            """,
+            fetch=True
+        )
+        if appointments:
+
+            df = pd.DataFrame(
+                appointments,
+                columns=[
+                    "Appointment ID",
+                    "Patient ID",
+                    "Doctor",
+                    "Type",
+                    "Date",
+                    "Time",
+                    "Token",
+                    "Status"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            appointment_ids = [
+                x[0] for x in appointments
+            ]
+
+            selected_ap = st.selectbox(
+                "Select Appointment to Update",
+                appointment_ids
+            )
+
+            new_status = st.selectbox(
+                "New Status",
+                [
+                    "Scheduled",
+                    "Confirmed",
+                    "Completed",
+                    "Cancelled",
+                    "No Show"
+                ]
+            )
+
+            if st.button(
+                "🔄 Update Appointment Status"
+            ):
+
+                execute(
+                    """
+                    UPDATE appointments
+                    SET status = ?
+                    WHERE appointment_id = ?
+                    """,
+                    (
+                        new_status,
+                        selected_ap
+                    )
+                )
+
+                st.success(
+                    "Appointment status updated."
+                )
+
+        else:
+
+            st.info(
+                "No appointments available."
+            )
+
+    with tab3:
+
+        today = str(date.today())
+
+        queue = execute(
+            """
+            SELECT
+                token_number,
+                patient_id,
+                doctor_name,
+                appointment_type,
+                appointment_time,
+                status
+            FROM appointments
+            WHERE appointment_date = ?
+            ORDER BY token_number
+            """,
+            (today,),
+            fetch=True
+        )
+
+        st.subheader(
+            f"🎫 Today's Queue — {today}"
+        )
+
+        if queue:
+
+            df = pd.DataFrame(
+                queue,
+                columns=[
+                    "Token",
+                    "Patient ID",
+                    "Doctor",
+                    "Type",
+                    "Time",
+                    "Status"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "No appointments in today's queue."
+            )
+            # ============================================================
+# ORTHODONTICS
+# ============================================================
+
+elif menu == "🦷 Orthodontics":
+
+    st.markdown(
+        '<div class="section">🦷 Orthodontic Management</div>',
+        unsafe_allow_html=True
+    )
+
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "➕ New Case",
+            "📈 Progress",
+            "🔄 Follow-up"
+        ]
+    )
+
+    patients = patient_names()
+
+    with tab1:
+
+        if not patients:
+
+            st.warning(
+                "Register a patient first."
+            )
+
+        else:
+
+            with st.form("ortho_case"):
+
+                selected = st.selectbox(
+                    "Patient",
+                    patients,
+                    format_func=patient_label
+                )
+
+                treatment_type = st.selectbox(
+                    "Treatment",
+                    [
+                        "Metal Braces",
+                        "Ceramic Braces",
+                        "Clear Aligners",
+                        "Retainer",
+                        "Orthodontic Observation"
+                    ]
+                )
+
+                start = st.date_input(
+                    "Start Date",
+                    value=date.today()
+                )
+
+                expected = st.date_input(
+                    "Expected End Date",
+                    value=date.today() + timedelta(days=365)
+                )
+
+                progress = st.slider(
+                    "Initial Progress %",
+                    0,
+                    100,
+                    0
+                )
+
+                stage = st.selectbox(
+                    "Current Stage",
+                    [
+                        "Consultation",
+                        "Planning",
+                        "Initial Treatment",
+                        "Active Treatment",
+                        "Adjustment",
+                        "Retention",
+                        "Completed"
+                    ]
+                )
+
+                notes = st.text_area(
+                    "Clinical/Progress Notes"
+                )
+
+                submit = st.form_submit_button(
+                    "💾 Save Orthodontic Case",
+                    use_container_width=True
+                )
+
+                if submit:
+
+                    case_id = generate_id(
+                        "OC",
+                        "orthodontic_cases",
+                        "case_id"
+                    )
+
+                    execute(
+                        """
+                        INSERT INTO orthodontic_cases (
+                            case_id,
+                            patient_id,
+                            treatment_type,
+                            start_date,
+                            expected_end_date,
+                            progress,
+                            current_stage,
+                            notes
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            case_id,
+                            selected[0],
+                            treatment_type,
+                            str(start),
+                            str(expected),
+                            progress,
+                            stage,
+                            notes
+                        )
+                    )
+
+                    st.success(
+                        f"Orthodontic case {case_id} saved."
+                    )
+
+    with tab2:
+
+        cases = execute(
+            """
+            SELECT
+                case_id,
+                patient_id,
+                treatment_type,
+                start_date,
+                expected_end_date,
+                progress,
+                current_stage,
+                notes
+            FROM orthodontic_cases
+            ORDER BY id DESC
+            """,
+            fetch=True
+        )
+
+        if cases:
+
+            df = pd.DataFrame(
+                cases,
+                columns=[
+                    "Case ID",
+                    "Patient ID",
+                    "Treatment",
+                    "Start",
+                    "Expected End",
+                    "Progress %",
+                    "Stage",
+                    "Notes"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            selected_case = st.selectbox(
+                "Select Case",
+                [x[0] for x in cases]
+            )
+
+            progress = st.slider(
+                "Update Progress",
+                0,
+                100,
+                50
+            )
+
+            stage = st.selectbox(
+                "Update Stage",
+                [
+                    "Consultation",
+                    "Planning",
+                    "Initial Treatment",
+                    "Active Treatment",
+                    "Adjustment",
+                    "Retention",
+                    "Completed"
+                ]
+            )
+
+            if st.button(
+                "📈 Update Progress"
+            ):
+
+                execute(
+                    """
+                    UPDATE orthodontic_cases
+                    SET progress = ?,
+                        current_stage = ?
+                    WHERE case_id = ?
+                    """,
+                    (
+                        progress,
+                        stage,
+                        selected_case
+                    )
+                )
+
+                st.success(
+                    "Orthodontic progress updated."
+                )
+
+    with tab3:
+
+        if patients:
+
+            selected = st.selectbox(
+                "Patient",
+                patients,
+                format_func=patient_label,
+                key="follow_patient"
+            )
+
+            follow_date = st.date_input(
+                "Follow-up Date",
+                value=date.today()
+            )
+
+            stage = st.text_input(
+                "Treatment Stage"
+            )
+
+            progress = st.slider(
+                "Progress %",
+                0,
+                100,
+                50
+            )
+
+            notes = st.text_area(
+                "Follow-up Notes"
+            )
+
+            if st.button(
+                "💾 Save Follow-up"
+            ):
+
+                follow_id = generate_id(
+                    "FU",
+                    "followups",
+                    "followup_id"
+                )
+
+                execute(
+                    """
+                    INSERT INTO followups (
+                        followup_id,
+                        patient_id,
+                        followup_date,
+                        treatment_stage,
+                        progress,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        follow_id,
+                        selected[0],
+                        str(follow_date),
+                        stage,
+                        progress,
+                        notes
+                    )
+                )
+
+                st.success(
+                    f"Follow-up {follow_id} saved."
+                )
+                # ============================================================
+# DENTAL CARE
+# ============================================================
+
+elif menu == "🪥 Dental Care":
+
+    st.markdown(
+        '<div class="section">🪥 Dental Care Center</div>',
+        unsafe_allow_html=True
+    )
+
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "📝 Assessment",
+            "🥗 Diet Guide",
+            "🚨 Emergency Guidance",
+            "🧠 Dental Quiz"
+        ]
+    )
+
+    with tab1:
+
+        st.subheader(
+            "📝 Oral Health Questionnaire"
+        )
+
+        q1 = st.radio(
+            "Do you brush your teeth twice a day?",
+            ["Yes", "No"]
+        )
+
+        q2 = st.radio(
+            "Do you regularly floss/interdental clean?",
+            ["Yes", "No", "Sometimes"]
+        )
+
+        q3 = st.radio(
+            "Do you experience tooth sensitivity?",
+            ["Yes", "No"]
+        )
+
+        q4 = st.radio(
+            "Do you frequently consume sugary foods/drinks?",
+            ["Yes", "No", "Sometimes"]
+        )
+
+        q5 = st.radio(
+            "Have you visited a dentist recently?",
+            ["Yes", "No"]
+        )
+
+        if st.button(
+            "📊 Calculate Educational Risk Score"
+        ):
+
+            score = 0
+
+            if q1 == "No":
+                score += 2
+
+            if q2 == "No":
+                score += 2
+
+            if q3 == "Yes":
+                score += 2
+
+            if q4 == "Yes":
+                score += 2
+
+            if q5 == "No":
+                score += 2
+
+            if score <= 2:
+
+                level = "Lower educational risk"
+
+            elif score <= 5:
+
+                level = "Moderate educational risk"
+
+            else:
+
+                level = "Higher educational risk"
+
+            st.metric(
+                "Educational Score",
+                f"{score}/10"
+            )
+
+            st.info(
+                f"Assessment result: {level}. "
+                "This is an educational screening tool, "
+                "not a medical diagnosis."
+            )
+
+    with tab2:
+
+        st.subheader(
+            "🥗 Dental Diet Recommendations"
+        )
+
+        st.success(
+            "Prefer balanced meals, water, vegetables, "
+            "calcium-rich foods and limited added sugar."
+        )
+
+        st.warning(
+            "For braces, avoid very hard, sticky or chewy "
+            "foods that may damage orthodontic appliances."
+        )
+
+    with tab3:
+
+        st.subheader(
+            "🚨 Dental Emergency Guidance"
+        )
+
+        situation = st.selectbox(
+            "Select situation",
+            [
+                "Severe tooth pain",
+                "Dental injury",
+                "Bleeding",
+                "Swelling",
+                "Broken dental appliance",
+                "Knocked-out tooth"
+            ]
+        )
+
+        st.info(
+            f"""
+            General educational guidance for: {situation}
+
+            Seek professional dental care promptly,
+            especially when pain, swelling, bleeding,
+            trauma or other serious symptoms are present.
+
+            If the situation appears life-threatening,
+            seek emergency medical assistance.
+            """
+        )
+
+    with tab4:
+
+        st.subheader(
+            "🧠 Dental Health Quiz"
+        )
+
+        answer = st.radio(
+            "How often is brushing generally recommended?",
+            [
+                "Once a week",
+                "Twice daily",
+                "Once a month",
+                "Only when pain occurs"
+            ]
+        )
+
+        if st.button(
+            "Check Answer"
+        ):
+
+            if answer == "Twice daily":
+
+                st.success(
+                    "✅ Correct!"
+                )
+
+            else:
+
+                st.error(
+                    "❌ Incorrect. The expected educational answer is twice daily."
+                )
+                # ============================================================
+# REMINDERS
+# ============================================================
+
+elif menu == "🔔 Reminders":
+
+    st.markdown(
+        '<div class="section">🔔 Smart Dental Reminders</div>',
+        unsafe_allow_html=True
+    )
+
+    patients = patient_names()
+
+    if patients:
+
+        selected = st.selectbox(
+            "Patient",
+            patients,
+            format_func=patient_label
+        )
+
+        reminder_type = st.selectbox(
+            "Reminder Type",
+            [
+                "Appointment",
+                "Dental Cleaning",
+                "Toothbrush Replacement",
+                "Oral Hygiene",
+                "Braces Care",
+                "Aligner Wear",
+                "Retainer Usage",
+                "Follow-up"
+            ]
+        )
+
+        reminder_date = st.date_input(
+            "Reminder Date",
+            value=date.today()
+        )
+
+        message = st.text_area(
+            "Reminder Message"
+        )
+
+        if st.button(
+            "🔔 Save Reminder"
+        ):
+
+            reminder_id = generate_id(
+                "RM",
+                "reminders",
+                "reminder_id"
+            )
+
+            execute(
+                """
+                INSERT INTO reminders (
+                    reminder_id,
+                    patient_id,
+                    reminder_type,
+                    reminder_date,
+                    message,
+                    status
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    reminder_id,
+                    selected[0],
+                    reminder_type,
+                    str(reminder_date),
+                    message,
+                    "Pending"
+                )
+            )
+
+            st.success(
+                f"Reminder {reminder_id} created."
+            )
+
+    reminders = execute(
+        """
+        SELECT
+            reminder_id,
+            patient_id,
+            reminder_type,
+            reminder_date,
+            message,
+            status
+        FROM reminders
+        ORDER BY reminder_date
+        """,
+        fetch=True
+    )
+
+    if reminders:
+
+        st.subheader("📋 Reminder List")
+
+        df = pd.DataFrame(
+            reminders,
+            columns=[
+                "Reminder ID",
+                "Patient ID",
+                "Type",
+                "Date",
+                "Message",
+                "Status"
+            ]
+        )
+
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True
+        )
+
+
+# ============================================================
+# BILLING
+# ============================================================
+
+elif menu == "💳 Billing":
+
+    st.markdown(
+        '<div class="section">💳 Billing & Payments</div>',
+        unsafe_allow_html=True
+    )
+
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "🧾 Create Bill",
+            "💰 Payment",
+            "📋 Billing History"
+        ]
+    )
+
+    patients = patient_names()
+
+    with tab1:
+
+        if patients:
+
+            selected = st.selectbox(
+                "Patient",
+                patients,
+                format_func=patient_label
+            )
+
+            description = st.text_input(
+                "Treatment / Service"
+            )
+
+            total = st.number_input(
+                "Total Amount",
+                min_value=0.0,
+                step=100.0
+            )
+
+            paid = st.number_input(
+                "Initial Paid Amount",
+                min_value=0.0,
+                max_value=total,
+                step=100.0
+            )
+
+            if st.button(
+                "🧾 Generate Bill"
+            ):
+
+                bill_id = generate_id(
+                    "BL",
+                    "bills",
+                    "bill_id"
+                )
+
+                balance = total - paid
+
+                status = (
+                    "Paid"
+                    if balance == 0
+                    else "Partially Paid"
+                    if paid > 0
+                    else "Pending"
+                )
+
+                execute(
+                    """
+                    INSERT INTO bills (
+                        bill_id,
+                        patient_id,
+                        bill_date,
+                        description,
+                        total_amount,
+                        paid_amount,
+                        balance,
+                        status
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        bill_id,
+                        selected[0],
+                        str(date.today()),
+                        description,
+                        total,
+                        paid,
+                        balance,
+                        status
+                    )
+                )
+
+                st.success(
+                    f"Bill {bill_id} generated."
+                )
+
+                st.metric(
+                    "Balance",
+                    f"₹{balance:,.2f}"
+                )
+
+    with tab2:
+
+        bills = execute(
+            """
+            SELECT bill_id, patient_id, balance
+            FROM bills
+            WHERE balance > 0
+            ORDER BY id DESC
+            """,
+            fetch=True
+        )
+
+        if bills:
+
+            selected_bill = st.selectbox(
+                "Bill",
+                bills,
+                format_func=lambda x:
+                    f"{x[0]} — {x[1]} — ₹{x[2]:,.2f}"
+            )
+
+            amount = st.number_input(
+                "Payment Amount",
+                min_value=0.0,
+                max_value=float(selected_bill[2]),
+                step=100.0
+            )
+
+            method = st.selectbox(
+                "Payment Method",
+                [
+                    "Cash",
+                    "UPI",
+                    "Card",
+                    "Bank Transfer"
+                ]
+            )
+
+            if st.button(
+                "💰 Record Payment"
+            ):
+                payment_id = generate_id(
+                    "PY",
+                    "payments",
+                    "payment_id"
+                )
+
+                execute(
+                    """
+                    INSERT INTO payments (
+                        payment_id,
+                        bill_id,
+                        patient_id,
+                        payment_date,
+                        amount,
+                        payment_method,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        payment_id,
+                        selected_bill[0],
+                        selected_bill[1],
+                        str(date.today()),
+                        amount,
+                        method,
+                        ""
+                    )
+                )
+
+                new_balance = selected_bill[2] - amount
+
+                new_status = (
+                    "Paid"
+                    if new_balance <= 0
+                    else "Partially Paid"
+                )
+
+                execute(
+                    """
+                    UPDATE bills
+                    SET paid_amount =
+                        paid_amount + ?,
+                        balance = ?,
+                        status = ?
+                    WHERE bill_id = ?
+                    """,
+                    (
+                        amount,
+                        new_balance,
+                        new_status,
+                        selected_bill[0]
+                    )
+                )
+
+                st.success(
+                    f"Payment {payment_id} recorded."
+                )
+
+        else:
+
+            st.info(
+                "No outstanding bills."
+            )
+
+    with tab3:
+
+        bills = execute(
+            """
+            SELECT
+                bill_id,
+                patient_id,
+                bill_date,
+                description,
+                total_amount,
+                paid_amount,
+                balance,
+                status
+            FROM bills
+            ORDER BY id DESC
+            """,
+            fetch=True
+        )
+
+        if bills:
+
+            df = pd.DataFrame(
+                bills,
+                columns=[
+                    "Bill ID",
+                    "Patient ID",
+                    "Date",
+                    "Description",
+                    "Total",
+                    "Paid",
+                    "Balance",
+                    "Status"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+
+# ============================================================
+# INVENTORY
+# ============================================================
+
+elif menu == "📦 Inventory":
+
+    st.markdown(
+        '<div class="section">📦 Clinic Inventory</div>',
+        unsafe_allow_html=True
+    )
+
+    tab1, tab2 = st.tabs(
+        [
+            "➕ Add Item",
+            "📋 Inventory"
+        ]
+    )
+
+    with tab1:
+
+        with st.form("inventory_form"):
+
+            item_name = st.text_input(
+                "Item Name"
+            )
+
+            category = st.text_input(
+                "Category"
+            )
+
+            quantity = st.number_input(
+                "Quantity",
+                min_value=0,
+                step=1
+            )
+
+            minimum = st.number_input(
+                "Minimum Stock Level",
+                min_value=0,
+                value=5,
+                step=1
+            )
+
+            unit_price = st.number_input(
+                "Unit Price",
+                min_value=0.0,
+                step=10.0
+            )
+
+            supplier = st.text_input(
+                "Supplier"
+            )
+
+            submit = st.form_submit_button(
+                "📦 Save Item",
+                use_container_width=True
+            )
+
+            if submit:
+
+                if item_name.strip():
+
+                    item_id = generate_id(
+                        "IN",
+                        "inventory",
+                        "item_id"
+                    )
+
+                    execute(
+                        """
+                        INSERT INTO inventory (
+                            item_id,
+                            item_name,
+                            category,
+                            quantity,
+                            minimum_stock,
+                            unit_price,
+                            supplier,
+                            last_updated
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            item_id,
+                            item_name,
+                            category,
+                            quantity,
+                            minimum,
+                            unit_price,
+                            supplier,
+                            str(datetime.now())
+                        )
+                    )
+
+                    st.success(
+                        f"Inventory item {item_id} saved."
+                    )
+
+    with tab2:
+
+        items = execute(
+            """
+            SELECT
+                item_id,
+                item_name,
+                category,
+                quantity,
+                minimum_stock,
+                unit_price,
+                supplier
+            FROM inventory
+            ORDER BY id DESC
+            """,
+            fetch=True
+        )
+        # ============================================================
+# AI CARE CENTER
+# ============================================================
+
+elif menu == "🤖 AI Care Center":
+
+    st.markdown(
+        '<div class="section">🤖 AI Care Center</div>',
+        unsafe_allow_html=True
+    )
+
+    st.info(
+        "AI-assisted educational analysis only. "
+        "This prototype does not provide medical diagnosis "
+        "or treatment prescriptions."
+    )
+
+    try:
+
+        hf_token = st.secrets["HF_TOKEN"]
+
+    except Exception:
+
+        hf_token = None
+
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "💬 Dental AI Assistant",
+            "😁 Smile Analysis",
+            "🦷 Progress Analysis",
+            "💬 Feedback Analysis"
+        ]
+    )
+
+    # --------------------------------------------------------
+    # TEXT AI
+    # --------------------------------------------------------
+
+    with tab1:
+
+        if hf_token:
+
+            st.success(
+                "🟢 Hugging Face token detected."
+            )
+
+        else:
+
+            st.warning(
+                "🟡 HF_TOKEN is not configured in Streamlit Secrets."
+            )
+
+        question = st.text_area(
+            "Ask an educational dental question",
+            placeholder=(
+                "Example: What are good oral hygiene habits?"
+            )
+        )
+
+        if st.button(
+            "🤖 Ask Hugging Face AI",
+            use_container_width=True
+        ):
+
+            if not hf_token:
+
+                st.error(
+                    "Add HF_TOKEN to Streamlit Secrets first."
+                )
+
+            elif not question.strip():
+
+                st.warning(
+                    "Enter a question."
+                )
+
+            else:
+
+                try:
+
+                    from huggingface_hub import InferenceClient
+
+                    client = InferenceClient(
+                        api_key=hf_token
+                    )
+
+                    model = st.secrets.get(
+                        "HF_MODEL",
+                        "Qwen/Qwen2.5-7B-Instruct"
+                    )
+
+                    with st.spinner(
+                        "AI is preparing an educational response..."
+                    ):
+
+                        response = client.chat_completion(
+                            model=model,
+                            messages=[
+                                {
+                                    "role": "system",
+                                    "content": (
+                                        "You are an educational dental "
+                                        "information assistant. "
+                                        "Do not diagnose medical or "
+                                        "dental conditions. "
+                                        "Do not prescribe medication. "
+                                        "Provide general educational "
+                                        "information and recommend "
+                                        "consulting a qualified "
+                                        "dental professional when "
+                                        "appropriate."
+                                    )
+                                },
+                                {
+                                    "role": "user",
+                                    "content": question
+                                }
+                            ],
+                            max_tokens=500
+                        )
+
+                    answer = (
+                        response.choices[0]
+                        .message.content
+                    )
+
+                    st.markdown("### 🤖 AI Response")
+
+                    st.write(answer)
+
+                except Exception as e:
+
+                    st.error(
+                        "Hugging Face request failed."
+                    )
+
+                    st.code(
+                        str(e)
+                    )
+                    # --------------------------------------------------------
+    # SMILE IMAGE
+    # --------------------------------------------------------
+
+    with tab2:
+
+        st.subheader(
+            "😁 AI Smile Analysis Assistant"
+        )
+
+        image = st.file_uploader(
+            "Upload Smile Image",
+            type=[
+                "jpg",
+                "jpeg",
+                "png",
+                "webp"
+            ],
+            key="smile_image"
+        )
+
+        if image:
+
+            st.image(
+                image,
+                caption="Uploaded Smile Image",
+                use_container_width=True
+            )
+
+            st.info(
+                "Vision-model integration can be used for "
+                "educational image analysis. The output must "
+                "not be presented as a dental diagnosis."
+            )
+
+    # --------------------------------------------------------
+    # ORTHODONTIC IMAGE
+    # --------------------------------------------------------
+
+    with tab3:
+
+        st.subheader(
+            "🦷 Orthodontic Progress Analyzer"
+        )
+
+        before = st.file_uploader(
+            "Initial / Before Image",
+            type=["jpg", "jpeg", "png"],
+            key="before_image"
+        )
+
+        after = st.file_uploader(
+            "Follow-up / After Image",
+            type=["jpg", "jpeg", "png"],
+            key="after_image"
+        )
+
+        if before and after:
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+
+                st.image(
+                    before,
+                    caption="Initial Image",
+                    use_container_width=True
+                )
+                with c2:
+
+                st.image(
+                    after,
+                    caption="Follow-up Image",
+                    use_container_width=True
+                )
+
+            st.success(
+                "Images uploaded successfully."
+            )
+
+            st.info(
+                "The production version can connect these "
+                "images to a suitable computer-vision model "
+                "for educational progress comparison."
+            )
+
+    # --------------------------------------------------------
+    # FEEDBACK AI
+    # --------------------------------------------------------
+
+    with tab4:
+
+        st.subheader(
+            "💬 AI Feedback Analysis"
+        )
+
+        feedback_text = st.text_area(
+            "Enter patient feedback"
+        )
+
+        if st.button(
+            "Analyze Feedback"
+        ):
+
+            text = feedback_text.lower()
+
+            positive_words = [
+                "good",
+                "excellent",
+                "happy",
+                "great",
+                "nice",
+                "satisfied"
+            ]
+
+            negative_words = [
+                "bad",
+                "poor",
+                "unhappy",
+                "slow",
+                "worst",
+                "dissatisfied"
+            ]
+
+            positive = sum(
+                word in text
+                for word in positive_words
+            )
+
+            negative = sum(
+                word in text
+                for word in negative_words
+            )
+
+            if positive > negative:
+
+                sentiment = "Positive 😊"
+
+            elif negative > positive:
+
+                sentiment = "Negative 😟"
+
+            else:
+
+                sentiment = "Neutral 😐"
+
+            st.metric(
+                "Detected Sentiment",
+                sentiment
+            )
+            # ============================================================
+# REPORTS
+# ============================================================
+
+elif menu == "📊 Reports":
+
+    st.markdown(
+        '<div class="section">📊 Clinic Reports & Analytics</div>',
+        unsafe_allow_html=True
+    )
+
+    patients = scalar(
+        "SELECT COUNT(*) FROM patients"
+    )
+
+    appointments = scalar(
+        "SELECT COUNT(*) FROM appointments"
+    )
+
+    treatments = scalar(
+        "SELECT COUNT(*) FROM treatments"
+    )
+
+    cases = scalar(
+        "SELECT COUNT(*) FROM orthodontic_cases"
+    )
+
+    revenue = scalar(
+        "SELECT COALESCE(SUM(paid_amount),0) FROM bills"
+    )
+
+    outstanding = scalar(
+        "SELECT COALESCE(SUM(balance),0) FROM bills"
+    )
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.metric(
+            "👥 Patients",
+            patients
+        )
+
+    with c2:
+        st.metric(
+            "📅 Appointments",
+            appointments
+        )
+
+    with c3:
+        st.metric(
+            "🦷 Treatments",
+            treatments
+        )
+
+    c4, c5, c6 = st.columns(3)
+
+    with c4:
+        st.metric(
+            "😁 Orthodontic Cases",
+            cases
+        )
+
+    with c5:
+        st.metric(
+            "💰 Collected",
+            f"₹{revenue:,.2f}"
+        )
+
+    with c6:
+        st.metric(
+            "⚠️ Outstanding",
+            f"₹{outstanding:,.2f}"
+        )
+
+    st.subheader(
+        "📈 Appointment Status"
+    )
+
+    appointment_status = execute(
+        """
+        SELECT status, COUNT(*)
+        FROM appointments
+        GROUP BY status
+        """,
+        fetch=True
+    )
+
+    if appointment_status:
+
+        df = pd.DataFrame(
+            appointment_status,
+            columns=[
+                "Status",
+                "Count"
+            ]
+        )
+
+        st.bar_chart(
+            df.set_index("Status")
+        )
+
+    st.subheader(
+        "💳 Revenue Summary"
+    )
+
+    revenue_data = execute(
+        """
+        SELECT
+            bill_date,
+            SUM(total_amount),
+            SUM(paid_amount),
+            SUM(balance)
+        FROM bills
+        GROUP BY bill_date
+        ORDER BY bill_date
+        """,
+        fetch=True
+    )
+
+    if revenue_data:
+
+        df = pd.DataFrame(
+            revenue_data,
+            columns=[
+                "Date",
+                "Total",
+                "Paid",
+                "Balance"
+            ]
+        )
+
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True
+        )
+        # ============================================================
+# ADMINISTRATION
+# ============================================================
+
+elif menu == "⚙️ Administration":
+
+    st.markdown(
+        '<div class="section">⚙️ Administration</div>',
+        unsafe_allow_html=True
+    )
+
+    st.subheader(
+        "🏥 Clinic Information"
+    )
+
+    clinic_name = st.text_input(
+        "Clinic Name",
+        "AI-Dental Pro Academic Clinic"
+    )
+
+    dentist = st.text_input(
+        "Primary Dentist / Orthodontist"
+    )
+
+    phone = st.text_input(
+        "Clinic Contact Number"
+    )
+
+    address = st.text_area(
+        "Clinic Address"
+    )
+
+    if st.button(
+        "💾 Save Clinic Information"
+    ):
+
+        st.success(
+            "Clinic information saved for this session."
+        )
+
+    st.divider()
+
+    st.subheader(
+        "🛠️ System Information"
+    )
+
+    st.write(
+        "**Application:** AI-Dental Pro"
+    )
+
+    st.write(
+        "**Developer:** Rashpreet Kaur Arora"
+    )
+
+    st.write(
+        "**Course:** BCA 2nd Year"
+    )
+
+    st.write(
+        "**Platform:** Streamlit"
+    )
+
+    st.write(
+        "**Database:** SQLite"
+    )
+
+    st.write(
+        "**AI:** Hugging Face"
+    )
+
+    st.write(
+        "**Purpose:** Academic Prototype"
+    )
+
+    st.warning(
+        "AI outputs are for educational assistance and "
+        "analysis only. They should not be treated as "
+        "professional medical advice."
+    )
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+st.markdown(
+    """
+    <div class="footer">
+        🦷 <b>AI-Dental Pro</b><br>
+        Intelligent Dental & Orthodontic Clinic Management System<br><br>
+        Developed by <b>Rashpreet Kaur Arora</b> | BCA 2nd Year<br>
+        Academic Prototype — AI-assisted analysis only
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+                    
