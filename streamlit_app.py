@@ -366,59 +366,279 @@ elif menu == "👤 Patients":
 # ========================= APPOINTMENTS =========================
 
 elif menu == "📅 Appointments":
-    st.markdown('<div class="section">📅 Appointment & Queue Management</div>',unsafe_allow_html=True)
-    t1,t2,t3,t4=st.tabs(["➕ Schedule","📋 List","🎫 Queue","❌ Manage"])
-    ps=patients()
+    st.markdown(
+        '<div class="section">📅 Appointment & Queue Management</div>',
+        unsafe_allow_html=True
+    )
+
+    t1, t2, t3, t4 = st.tabs(
+        ["➕ Schedule", "📋 List", "🎫 Queue", "❌ Manage"]
+    )
+
+    ps = patients()
+
+    # -------------------- SCHEDULE --------------------
 
     with t1:
-        if not ps: st.warning("Register a patient first.")
+        if not ps:
+            st.warning("Register a patient first.")
         else:
-            with st.form("appointment"):
-                p=st.selectbox("Patient",ps,format_func=label_patient)
-                c1,c2=st.columns(2)
+            with st.form("appointment_form"):
+                p = st.selectbox(
+                    "Patient",
+                    ps,
+                    format_func=label_patient
+                )
+
+                c1, c2 = st.columns(2)
+
                 with c1:
-                    doctor=st.text_input("Dentist / Orthodontist")
-                    typ=st.selectbox("Appointment Type",["Dental Consultation","Dental Cleaning","Dental Treatment","Orthodontic Consultation","Braces Follow-up","Clear Aligner Follow-up","Retainer Check-up","Emergency Dental Visit","General Follow-up"])
-                    ad=st.date_input("Date",date.today())
+                    doctor = st.text_input(
+                        "Dentist / Orthodontist"
+                    )
+
+                    typ = st.selectbox(
+                        "Appointment Type",
+                        [
+                            "Dental Consultation",
+                            "Dental Cleaning",
+                            "Dental Treatment",
+                            "Orthodontic Consultation",
+                            "Braces Follow-up",
+                            "Clear Aligner Follow-up",
+                            "Retainer Check-up",
+                            "Emergency Dental Visit",
+                            "General Follow-up"
+                        ]
+                    )
+
+                    appointment_date = st.date_input(
+                        "Date",
+                        date.today()
+                    )
+
                 with c2:
-                    at=st.time_input("Time")
-                    token=st.number_input("Queue Token",1,999,1)
-                    notes=st.text_area("Notes")
-                ok=st.form_submit_button("📅 Schedule",use_container_width=True)
-            if ok:
-                aid=new_id("APT","appointments")
-                duplicate=scalar("""SELECT COUNT(*) FROM appointments WHERE appointment_date=? AND appointment_time=? AND doctor_name=? AND status NOT IN ('Cancelled','Completed')""",(str(ad),str(at),doctor))
-                if duplicate: st.error("Doctor already has an active appointment at this time.")
+                    appointment_time = st.time_input(
+                        "Time"
+                    )
+
+                    token = st.number_input(
+                        "Queue Token",
+                        min_value=1,
+                        max_value=999,
+                        value=1,
+                        step=1
+                    )
+
+                    notes = st.text_area(
+                        "Notes"
+                    )
+
+                save = st.form_submit_button(
+                    "📅 Schedule Appointment",
+                    use_container_width=True
+                )
+
+            if save:
+                appointment_id = new_id(
+                    "APT",
+                    "appointments"
+                )
+
+                duplicate = scalar(
+                    """
+                    SELECT COUNT(*)
+                    FROM appointments
+                    WHERE appointment_date=?
+                    AND appointment_time=?
+                    AND doctor_name=?
+                    AND status NOT IN
+                    ('Cancelled','Completed')
+                    """,
+                    (
+                        str(appointment_date),
+                        str(appointment_time),
+                        doctor
+                    )
+                )
+
+                if duplicate:
+                    st.error(
+                        "Doctor already has an active appointment at this time."
+                    )
                 else:
-                    good,err=safe_insert("""INSERT INTO appointments(appointment_id,patient_id,doctor_name,appointment_type,appointment_date,appointment_time,token_number,status,notes,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)""",
-                    (aid,p[0],doctor,typ,str(ad),str(at),int(token),"Scheduled",notes,datetime.now().isoformat()))
-                    if good: st.success(f"Scheduled {aid}")
-                    else: st.error(err)
+                    ok, err = safe_insert(
+                        """
+                        INSERT INTO appointments(
+                            appointment_id,
+                            patient_id,
+                            doctor_name,
+                            appointment_type,
+                            appointment_date,
+                            appointment_time,
+                            token_number,
+                            status,
+                            notes,
+                            created_at
+                        )
+                        VALUES(?,?,?,?,?,?,?,?,?,?)
+                        """,
+                        (
+                            appointment_id,
+                            p[0],
+                            doctor,
+                            typ,
+                            str(appointment_date),
+                            str(appointment_time),
+                            int(token),
+                            "Scheduled",
+                            notes,
+                            datetime.now().isoformat()
+                        )
+                    )
+
+                    if ok:
+                        st.success(
+                            f"Appointment scheduled: {appointment_id}"
+                        )
+                    else:
+                        st.error(err)
+
+    # -------------------- LIST --------------------
 
     with t2:
-        d=st.date_input("Filter date",date.today(),key="appt_filter")
-        rows=execute("""SELECT a.appointment_id,a.patient_id,p.full_name,a.doctor_name,a.appointment_type,
-                        a.appointment_date,a.appointment_time,a.token_number,a.status,a.notes
-                        FROM appointments a LEFT JOIN patients p ON a.patient_id=p.patient_id
-                        WHERE a.appointment_date=? ORDER BY a.appointment_time""",(str(d),),True)
-        if rows: st.dataframe(pd.DataFrame(rows,columns=["ID","Patient ID","Patient","Doctor","Type","Date","Time","Token","Status","Notes"]),use_container_width=True,hide_index=True)
-        else: st.info("No appointments.")
+        filter_date = st.date_input(
+            "Filter Date",
+            date.today(),
+            key="appointment_filter_date"
+        )
+
+        rows = execute(
+            """
+            SELECT
+                a.appointment_id,
+                a.patient_id,
+                p.full_name,
+                a.doctor_name,
+                a.appointment_type,
+                a.appointment_date,
+                a.appointment_time,
+                a.token_number,
+                a.status,
+                a.notes
+            FROM appointments a
+            LEFT JOIN patients p
+            ON a.patient_id = p.patient_id
+            WHERE a.appointment_date=?
+            ORDER BY a.appointment_time
+            """,
+            (str(filter_date),),
+            fetch=True
+        )
+
+        if rows:
+            df = pd.DataFrame(
+                rows,
+                columns=[
+                    "Appointment ID",
+                    "Patient ID",
+                    "Patient",
+                    "Doctor",
+                    "Type",
+                    "Date",
+                    "Time",
+                    "Token",
+                    "Status",
+                    "Notes"
+                ]
+            )
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("No appointments found.")
+
+    # -------------------- QUEUE --------------------
 
     with t3:
-        rows=execute("""SELECT a.appointment_id,a.token_number,p.full_name,a.appointment_type,a.appointment_time,a.doctor_name,a.status
-                        FROM appointments a LEFT JOIN patients p ON a.patient_id=p.patient_id
-                        WHERE a.appointment_date=? ORDER BY a.token_number""",(str(date.today()),),True)
-        if not rows: st.info("Today's queue is empty.")
-        for r in rows:
-            st.markdown(f"<div class='card'><h3>🎫 Token #{r[1]} — {r[2]}</h3><b>Type:</b> {r[3]} &nbsp; <b>Time:</b> {r[4]} &nbsp; <b>Doctor:</b> {r[5]}<br><b>Status:</b> {r[6]}</div>",unsafe_allow_html=True)
-            if r[6] in ("Scheduled","In Progress"):
-                c1,c2=st.columns(2)
-                with c1:
-                    if st.button("▶️ Start",key="start_"+r[0]):
-                        execute("UPDATE appointments SET status='In Progress' WHERE appointment_id=?",(r[0],)); st.rerun()
-                with c2:
-                    if st.button("✅ Complete",key="done_"+r[0]):
-                        execute("UPDATE appointments SET status='Completed' WHERE appointment_id=?",(r[0],)); st.rerun()
+        rows = execute(
+            """
+            SELECT
+                a.appointment_id,
+                a.token_number,
+                p.full_name,
+                a.appointment_type,
+                a.appointment_time,
+                a.doctor_name,
+                a.status
+            FROM appointments a
+            LEFT JOIN patients p
+            ON a.patient_id = p.patient_id
+            WHERE a.appointment_date=?
+            ORDER BY a.token_number
+            """,
+            (str(date.today()),),
+            fetch=True
+        )
+
+        if not rows:
+            st.info("Today's queue is empty.")
+        else:
+            for r in rows:
+                st.markdown(
+                    f"""
+                    <div class="card">
+                        <h3>
+                            🎫 Token #{r[1]} — {r[2]}
+                        </h3>
+                        <b>Type:</b> {r[3]}<br>
+                        <b>Time:</b> {r[4]}<br>
+                        <b>Doctor:</b> {r[5]}<br>
+                        <b>Status:</b> {r[6]}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                if r[6] in ("Scheduled", "In Progress"):
+
+                    c1, c2 = st.columns(2)
+
+                    with c1:
+                        if st.button(
+                            "▶️ Start",
+                            key=f"start_{r[0]}"
+                        ):
+                            execute(
+                                """
+                                UPDATE appointments
+                                SET status=?
+                                WHERE appointment_id=?
+                                """,
+                                ("In Progress", r[0])
+                            )
+                            st.rerun()
+
+                    with c2:
+                        if st.button(
+                            "✅ Complete",
+                            key=f"complete_{r[0]}"
+                        ):
+                            execute(
+                                """
+                                UPDATE appointments
+                                SET status=?
+                                WHERE appointment_id=?
+                                """,
+                                ("Completed", r[0])
+                            )
+                            st.rerun()
+
+    # -------------------- MANAGE --------------------
+
     with t4:
         rows = execute(
             """
@@ -436,20 +656,22 @@ elif menu == "📅 Appointments":
         )
 
         if rows:
-            opts = [
+            options = [
                 f"{r[0]} | {r[1]} | {r[2]} {r[3]} | {r[4]}"
                 for r in rows
             ]
 
-            sel = st.selectbox(
+            selected = st.selectbox(
                 "Appointment",
-                opts,
+                options,
                 key="manage_appointment"
             )
 
-            r = rows[opts.index(sel)]
+            selected_row = rows[
+                options.index(selected)
+            ]
 
-            status = st.selectbox(
+            new_status = st.selectbox(
                 "New Status",
                 [
                     "Scheduled",
@@ -458,40 +680,42 @@ elif menu == "📅 Appointments":
                     "Cancelled",
                     "No Show"
                 ],
-                key="appointment_status"
+                key="appointment_new_status"
             )
 
             reason = st.text_area(
-                "Reason / note",
-                key="appointment_reason"
+                "Reason / Note",
+                key="appointment_status_note"
             )
 
             if st.button(
                 "💾 Update Status",
-                use_container_width=True,
-                key="update_appointment_status"
+                use_container_width=True
             ):
                 execute(
                     """
                     UPDATE appointments
-                    SET status=?, notes=?
+                    SET status=?,
+                        notes=?
                     WHERE appointment_id=?
                     """,
                     (
-                        status,
+                        new_status,
                         reason,
-                        r[0]
+                        selected_row[0]
                     )
                 )
 
                 st.success(
-                    "✅ Appointment updated successfully."
+                    "Appointment status updated successfully."
                 )
 
                 st.rerun()
 
         else:
-            st.info("No appointments.")
+            st.info("No appointments recorded.")
+                
+                
 # ========================= ORTHODONTICS =========================
 
 elif menu == "🦷 Orthodontics":
@@ -743,39 +967,30 @@ elif menu == "💳 Billing":
         ]
     )
 
-    # ========================================================
-    # PATIENT LIST
-    # ========================================================
-
-    ps = patient_names()
+    ps = patients()
 
     # ========================================================
-    # TAB 1 — BILLS
+    # BILLS
     # ========================================================
 
     with t1:
 
-        st.subheader("🧾 Create New Bill")
-
         if not ps:
-
-            st.warning(
-                "No patients registered. Please register a patient first."
-            )
+            st.warning("Register a patient first.")
 
         else:
 
             with st.form("bill_form"):
 
                 p = st.selectbox(
-                    "Select Patient",
+                    "Patient",
                     ps,
-                    format_func=patient_label,
+                    format_func=label_patient,
                     key="bill_patient"
                 )
 
-                desc = st.text_input(
-                    "Bill / Treatment Description"
+                description = st.text_input(
+                    "Bill Description"
                 )
 
                 total = st.number_input(
@@ -801,13 +1016,7 @@ elif menu == "💳 Billing":
 
             if save_bill:
 
-                if not desc.strip():
-
-                    st.error(
-                        "Please enter a bill description."
-                    )
-
-                elif paid > total:
+                if paid > total:
 
                     st.error(
                         "Paid amount cannot exceed total amount."
@@ -815,30 +1024,23 @@ elif menu == "💳 Billing":
 
                 else:
 
-                    bid = generate_id(
+                    bill_id = new_id(
                         "BILL",
-                        "bills",
-                        "bill_id"
+                        "bills"
                     )
 
                     balance = total - paid
 
-                    if balance <= 0:
-
-                        status = "Paid"
-
+                    if balance == 0:
+                        bill_status = "Paid"
                     elif paid > 0:
-
-                        status = "Partially Paid"
-
+                        bill_status = "Partially Paid"
                     else:
+                        bill_status = "Pending"
 
-                        status = "Pending"
-
-                    execute(
+                    ok, err = safe_insert(
                         """
-                        INSERT INTO bills
-                        (
+                        INSERT INTO bills(
                             bill_id,
                             patient_id,
                             bill_date,
@@ -848,27 +1050,29 @@ elif menu == "💳 Billing":
                             balance,
                             status
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES(?,?,?,?,?,?,?,?)
                         """,
                         (
-                            bid,
+                            bill_id,
                             p[0],
                             str(date.today()),
-                            desc,
+                            description,
                             total,
                             paid,
                             balance,
-                            status
+                            bill_status
                         )
                     )
 
-                    st.success(
-                        f"✅ Bill created successfully: {bid}"
-                    )
+                    if ok:
 
-            st.divider()
+                        st.success(
+                            f"Bill created successfully: {bill_id}"
+                        )
 
-            st.subheader("📋 Bill Records")
+                    else:
+
+                        st.error(err)
 
             rows = execute(
                 """
@@ -884,7 +1088,7 @@ elif menu == "💳 Billing":
                     b.status
                 FROM bills b
                 LEFT JOIN patients p
-                    ON b.patient_id = p.patient_id
+                ON b.patient_id = p.patient_id
                 ORDER BY b.id DESC
                 """,
                 fetch=True
@@ -900,9 +1104,9 @@ elif menu == "💳 Billing":
                         "Patient",
                         "Date",
                         "Description",
-                        "Total (₹)",
-                        "Paid (₹)",
-                        "Balance (₹)",
+                        "Total",
+                        "Paid",
+                        "Balance",
                         "Status"
                     ]
                 )
@@ -915,17 +1119,13 @@ elif menu == "💳 Billing":
 
             else:
 
-                st.info(
-                    "No bills recorded yet."
-                )
+                st.info("No bills recorded yet.")
 
     # ========================================================
-    # TAB 2 — PAYMENTS
+    # PAYMENTS
     # ========================================================
 
     with t2:
-
-        st.subheader("💵 Record Payment")
 
         bills = execute(
             """
@@ -942,78 +1142,71 @@ elif menu == "💳 Billing":
 
         if not bills:
 
-            st.info(
-                "No outstanding bills available."
-            )
+            st.info("No outstanding bills.")
 
         else:
 
             bill_options = [
-                f"{row[0]} — Patient {row[1]} — Balance ₹{row[2]:.2f}"
-                for row in bills
+                f"{r[0]} — {r[1]} — Balance ₹{r[2]:.2f}"
+                for r in bills
             ]
 
             selected_bill = st.selectbox(
                 "Select Bill",
-                bill_options
+                bill_options,
+                key="payment_bill"
             )
 
-            selected_index = bill_options.index(
-                selected_bill
-            )
-
-            selected_bill_data = bills[
-                selected_index
+            selected_bill_row = bills[
+                bill_options.index(selected_bill)
             ]
 
-            bill_id = selected_bill_data[0]
-            patient_id = selected_bill_data[1]
-            outstanding = float(
-                selected_bill_data[2]
-            )
+            bill_id = selected_bill_row[0]
+            patient_id = selected_bill_row[1]
+            current_balance = float(selected_bill_row[2])
 
             st.info(
-                f"Outstanding Balance: ₹{outstanding:.2f}"
+                f"Outstanding Balance: ₹{current_balance:.2f}"
             )
 
             amount = st.number_input(
                 "Payment Amount (₹)",
                 min_value=0.0,
-                max_value=outstanding,
+                max_value=current_balance,
                 value=0.0,
-                step=100.0
+                step=100.0,
+                key="payment_amount"
             )
 
-            method = st.selectbox(
+            payment_method = st.selectbox(
                 "Payment Method",
                 [
                     "Cash",
                     "UPI",
-                    "Debit Card",
-                    "Credit Card",
+                    "Card",
                     "Bank Transfer",
                     "Other"
-                ]
+                ],
+                key="payment_method"
+            )
+            
+payment_notes = st.text_area(
+                "Payment Notes",
+                key="payment_notes"
             )
 
-            notes = st.text_area(
-                "Payment Notes"
-            )
-
-            record_payment = st.button(
+            if st.button(
                 "💵 Record Payment",
                 use_container_width=True
-            )
-
-            if record_payment:
+            ):
 
                 if amount <= 0:
 
                     st.error(
-                        "Please enter a valid payment amount."
+                        "Enter a valid payment amount."
                     )
 
-                elif amount > outstanding:
+                elif amount > current_balance:
 
                     st.error(
                         "Payment exceeds outstanding balance."
@@ -1021,16 +1214,14 @@ elif menu == "💳 Billing":
 
                 else:
 
-                    pay_id = generate_id(
+                    payment_id = new_id(
                         "PAY",
-                        "payments",
-                        "payment_id"
+                        "payments"
                     )
 
                     execute(
                         """
-                        INSERT INTO payments
-                        (
+                        INSERT INTO payments(
                             payment_id,
                             bill_id,
                             patient_id,
@@ -1039,16 +1230,16 @@ elif menu == "💳 Billing":
                             payment_method,
                             notes
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        VALUES(?,?,?,?,?,?,?)
                         """,
                         (
-                            pay_id,
+                            payment_id,
                             bill_id,
                             patient_id,
                             str(date.today()),
                             amount,
-                            method,
-                            notes
+                            payment_method,
+                            payment_notes
                         )
                     )
 
@@ -1056,38 +1247,28 @@ elif menu == "💳 Billing":
                         """
                         SELECT paid_amount
                         FROM bills
-                        WHERE bill_id = ?
+                        WHERE bill_id=?
                         """,
                         (bill_id,)
                     )
 
-                    old_paid = float(
-                        old_paid or 0
-                    )
-
-                    new_paid = old_paid + amount
-
-                    new_balance = max(
-                        0,
-                        outstanding - amount
-                    )
+                    new_paid = float(old_paid) + amount
+                    new_balance = current_balance - amount
 
                     if new_balance <= 0:
-
+                        new_balance = 0.0
                         new_status = "Paid"
-
                     else:
-
                         new_status = "Partially Paid"
 
                     execute(
                         """
                         UPDATE bills
                         SET
-                            paid_amount = ?,
-                            balance = ?,
-                            status = ?
-                        WHERE bill_id = ?
+                            paid_amount=?,
+                            balance=?,
+                            status=?
+                        WHERE bill_id=?
                         """,
                         (
                             new_paid,
@@ -1098,65 +1279,16 @@ elif menu == "💳 Billing":
                     )
 
                     st.success(
-                        f"✅ Payment recorded successfully: {pay_id}"
+                        f"Payment recorded successfully: {payment_id}"
                     )
 
-            st.divider()
-
-            st.subheader("📋 Payment History")
-
-            payment_rows = execute(
-                """
-                SELECT
-                    payment_id,
-                    bill_id,
-                    patient_id,
-                    payment_date,
-                    amount,
-                    payment_method,
-                    notes
-                FROM payments
-                ORDER BY id DESC
-                """,
-                fetch=True
-            )
-
-            if payment_rows:
-
-                payment_df = pd.DataFrame(
-                    payment_rows,
-                    columns=[
-                        "Payment ID",
-                        "Bill ID",
-                        "Patient ID",
-                        "Date",
-                        "Amount (₹)",
-                        "Method",
-                        "Notes"
-                    ]
-                )
-
-                st.dataframe(
-                    payment_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-            else:
-
-                st.info(
-                    "No payments recorded yet."
-                )
+                    st.rerun()
 
     # ========================================================
-    # TAB 3 — INSTALLMENTS
+    # INSTALLMENTS
     # ========================================================
 
     with t3:
-
-        st.subheader(
-            "📊 Installment & Balance Tracking"
-        )
 
         rows = execute(
             """
@@ -1164,17 +1296,20 @@ elif menu == "💳 Billing":
                 b.bill_id,
                 b.patient_id,
                 p.full_name,
-                b.description,
                 b.total_amount,
                 b.paid_amount,
                 b.balance,
                 b.status
             FROM bills b
             LEFT JOIN patients p
-                ON b.patient_id = p.patient_id
+            ON b.patient_id = p.patient_id
             ORDER BY b.id DESC
             """,
             fetch=True
+        )
+
+        st.subheader(
+            "📊 Installment / Balance Tracking"
         )
 
         if rows:
@@ -1185,10 +1320,9 @@ elif menu == "💳 Billing":
                     "Bill ID",
                     "Patient ID",
                     "Patient",
-                    "Description",
-                    "Total (₹)",
-                    "Paid (₹)",
-                    "Balance (₹)",
+                    "Total",
+                    "Paid",
+                    "Balance",
                     "Status"
                 ]
             )
@@ -1199,74 +1333,30 @@ elif menu == "💳 Billing":
                 hide_index=True
             )
 
-            total_billed = sum(
-                float(row[4])
-                for row in rows
-            )
-
-            total_paid = sum(
-                float(row[5])
-                for row in rows
-            )
-
-            total_balance = sum(
-                float(row[6])
-                for row in rows
-            )
-
-            c1, c2, c3 = st.columns(3)
-
-            with c1:
-
-                st.metric(
-                    "Total Billed",
-                    f"₹{total_billed:,.2f}"
-                )
-
-            with c2:
-
-                st.metric(
-                    "Total Paid",
-                    f"₹{total_paid:,.2f}"
-                )
-
-            with c3:
-
-                st.metric(
-                    "Outstanding",
-                    f"₹{total_balance:,.2f}"
-                )
-
         else:
 
-            st.info(
-                "No bills available for installment tracking."
-            )
+            st.info("No bills available.")
 
     # ========================================================
-    # TAB 4 — INSURANCE
+    # INSURANCE
     # ========================================================
 
     with t4:
 
-        st.subheader(
-            "🛡️ Insurance Claim Management"
-        )
-
         if not ps:
 
             st.warning(
-                "No patients registered. Please register a patient first."
+                "Register a patient first."
             )
 
         else:
 
-            with st.form("insurance_claim_form"):
+            with st.form("insurance_form"):
 
                 p = st.selectbox(
-                    "Select Patient",
+                    "Patient",
                     ps,
-                    format_func=patient_label,
+                    format_func=label_patient,
                     key="insurance_patient"
                 )
 
@@ -1278,7 +1368,7 @@ elif menu == "💳 Billing":
                     "Policy Number"
                 )
 
-                amount = st.number_input(
+                claim_amount = st.number_input(
                     "Claim Amount (₹)",
                     min_value=0.0,
                     max_value=10000000.0,
@@ -1286,7 +1376,7 @@ elif menu == "💳 Billing":
                     step=100.0
                 )
 
-                status = st.selectbox(
+                claim_status = st.selectbox(
                     "Claim Status",
                     [
                         "Pending",
@@ -1297,8 +1387,8 @@ elif menu == "💳 Billing":
                     ]
                 )
 
-                notes = st.text_area(
-                    "Claim Notes"
+                claim_notes = st.text_area(
+                    "Notes"
                 )
 
                 save_claim = st.form_submit_button(
@@ -1308,62 +1398,45 @@ elif menu == "💳 Billing":
 
             if save_claim:
 
-                if not company.strip():
-
-                    st.error(
-                        "Insurance company name is required."
+                claim_id = new_id(
+                    "CLM",
+                    "insurance_claims"
+                )
+                ok, err = safe_insert(
+                    """
+                    INSERT INTO insurance_claims(
+                        claim_id,
+                        patient_id,
+                        insurance_company,
+                        policy_number,
+                        claim_amount,
+                        claim_date,
+                        status,
+                        notes
                     )
+                    VALUES(?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        claim_id,
+                        p[0],
+                        company,
+                        policy,
+                        claim_amount,
+                        str(date.today()),
+                        claim_status,
+                        claim_notes
+                    )
+                )
 
-                elif not policy.strip():
+                if ok:
 
-                    st.error(
-                        "Policy number is required."
+                    st.success(
+                        f"Insurance claim saved: {claim_id}"
                     )
 
                 else:
 
-                    cid = generate_id(
-                        "CLM",
-                        "insurance_claims",
-                        "claim_id"
-                    )
-
-                    execute(
-                        """
-                        INSERT INTO insurance_claims
-                        (
-                            claim_id,
-                            patient_id,
-                            insurance_company,
-                            policy_number,
-                            claim_amount,
-                            claim_date,
-                            status,
-                            notes
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            cid,
-                            p[0],
-                            company,
-                            policy,
-                            amount,
-                            str(date.today()),
-                            status,
-                            notes
-                        )
-                    )
-
-                    st.success(
-                        f"✅ Insurance claim saved successfully: {cid}"
-                    )
-
-            st.divider()
-
-            st.subheader(
-                "📋 Insurance Claim Records"
-            )
+                    st.error(err)
 
             rows = execute(
                 """
@@ -1379,7 +1452,7 @@ elif menu == "💳 Billing":
                     c.notes
                 FROM insurance_claims c
                 LEFT JOIN patients p
-                    ON c.patient_id = p.patient_id
+                ON c.patient_id = p.patient_id
                 ORDER BY c.id DESC
                 """,
                 fetch=True
@@ -1393,9 +1466,9 @@ elif menu == "💳 Billing":
                         "Claim ID",
                         "Patient ID",
                         "Patient",
-                        "Insurance Company",
-                        "Policy Number",
-                        "Amount (₹)",
+                        "Company",
+                        "Policy",
+                        "Amount",
                         "Date",
                         "Status",
                         "Notes"
