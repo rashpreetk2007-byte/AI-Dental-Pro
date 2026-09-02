@@ -1,17 +1,23 @@
 import sqlite3
 from datetime import datetime
 
-
 DB_NAME = "dental_clinic.db"
 
 
 def get_connection():
-    return sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
 def initialize_database():
+
     conn = get_connection()
     cursor = conn.cursor()
+
+    # =========================
+    # PATIENTS
+    # =========================
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patients (
@@ -31,28 +37,304 @@ def initialize_database():
         )
     """)
 
+    # =========================
+    # APPOINTMENTS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            doctor_name TEXT,
+            appointment_type TEXT,
+            appointment_date TEXT,
+            appointment_time TEXT,
+            token_number INTEGER,
+            status TEXT DEFAULT 'Scheduled',
+            notes TEXT,
+            created_at TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # TREATMENTS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS treatments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            treatment_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            treatment_type TEXT,
+            treatment_name TEXT,
+            treatment_date TEXT,
+            dentist_name TEXT,
+            cost REAL DEFAULT 0,
+            notes TEXT,
+            status TEXT DEFAULT 'Active',
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # ORTHODONTIC CASES
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS orthodontic_cases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            treatment_type TEXT,
+            start_date TEXT,
+            expected_end_date TEXT,
+            progress INTEGER DEFAULT 0,
+            current_stage TEXT,
+            notes TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # FOLLOW UPS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS followups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            followup_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            followup_date TEXT,
+            treatment_stage TEXT,
+            progress INTEGER DEFAULT 0,
+            notes TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # PRESCRIPTIONS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS prescriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            prescription_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            prescription_date TEXT,
+            medicine TEXT,
+            instructions TEXT,
+            dentist_name TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # X-RAYS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS xray_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            xray_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            xray_date TEXT,
+            xray_type TEXT,
+            file_name TEXT,
+            notes TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # REMINDERS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reminder_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            reminder_type TEXT,
+            reminder_date TEXT,
+            message TEXT,
+            status TEXT DEFAULT 'Pending',
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # BILLING
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bill_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            bill_date TEXT,
+            description TEXT,
+            total_amount REAL DEFAULT 0,
+            paid_amount REAL DEFAULT 0,
+            balance REAL DEFAULT 0,
+            status TEXT DEFAULT 'Pending',
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # PAYMENTS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_id TEXT UNIQUE NOT NULL,
+            bill_id TEXT NOT NULL,
+            patient_id TEXT NOT NULL,
+            payment_date TEXT,
+            amount REAL DEFAULT 0,
+            payment_method TEXT,
+            notes TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # INSURANCE
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS insurance_claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            claim_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            insurance_company TEXT,
+            policy_number TEXT,
+            claim_amount REAL DEFAULT 0,
+            claim_date TEXT,
+            status TEXT DEFAULT 'Pending',
+            notes TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # INVENTORY
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id TEXT UNIQUE NOT NULL,
+            item_name TEXT NOT NULL,
+            category TEXT,
+            quantity INTEGER DEFAULT 0,
+            minimum_stock INTEGER DEFAULT 5,
+            unit_price REAL DEFAULT 0,
+            supplier TEXT,
+            last_updated TEXT
+        )
+    """)
+
+    # =========================
+    # EQUIPMENT
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS equipment (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            equipment_id TEXT UNIQUE NOT NULL,
+            equipment_name TEXT NOT NULL,
+            category TEXT,
+            purchase_date TEXT,
+            last_maintenance TEXT,
+            next_maintenance TEXT,
+            status TEXT DEFAULT 'Operational',
+            notes TEXT
+        )
+    """)
+
+    # =========================
+    # FEEDBACK
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            feedback_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT NOT NULL,
+            rating INTEGER,
+            feedback_text TEXT,
+            sentiment TEXT,
+            feedback_date TEXT,
+            FOREIGN KEY(patient_id)
+                REFERENCES patients(patient_id)
+                ON DELETE CASCADE
+        )
+    """)
+
+    # =========================
+    # AI ANALYSIS
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ai_analysis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            analysis_id TEXT UNIQUE NOT NULL,
+            patient_id TEXT,
+            analysis_type TEXT,
+            file_name TEXT,
+            result TEXT,
+            confidence REAL,
+            analysis_date TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
+# ============================================================
+# PATIENT FUNCTIONS
+# ============================================================
+
 def generate_patient_id():
+
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT MAX(id) FROM patients"
+        "SELECT COUNT(*) FROM patients"
     )
 
-    result = cursor.fetchone()[0]
+    count = cursor.fetchone()[0]
 
     conn.close()
 
-    if result is None:
-        number = 1001
-    else:
-        number = 1001 + result
-
-    return f"DP{number}"
+    return f"DP{1001 + count}"
 
 
 def add_patient(
@@ -72,10 +354,6 @@ def add_patient(
     cursor = conn.cursor()
 
     patient_id = generate_patient_id()
-
-    registration_date = datetime.now().strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
 
     cursor.execute("""
         INSERT INTO patients (
@@ -105,7 +383,7 @@ def add_patient(
         allergies,
         address,
         blood_group,
-        registration_date
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
 
     conn.commit()
@@ -133,11 +411,11 @@ def get_patients():
         ORDER BY id DESC
     """)
 
-    patients = cursor.fetchall()
+    data = cursor.fetchall()
 
     conn.close()
 
-    return patients
+    return data
 
 
 def search_patients(search_text):
@@ -168,11 +446,11 @@ def search_patients(search_text):
         search
     ))
 
-    patients = cursor.fetchall()
+    data = cursor.fetchall()
 
     conn.close()
 
-    return patients
+    return data
 
 
 def get_patient(patient_id):
@@ -186,8 +464,60 @@ def get_patient(patient_id):
         WHERE patient_id = ?
     """, (patient_id,))
 
-    patient = cursor.fetchone()
+    data = cursor.fetchone()
 
     conn.close()
 
-    return patient
+    return data
+
+
+# ============================================================
+# DASHBOARD COUNTS
+# ============================================================
+
+def count_patients():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT COUNT(*) FROM patients"
+    )
+
+    result = cursor.fetchone()[0]
+
+    conn.close()
+
+    return result
+
+
+def count_appointments():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT COUNT(*) FROM appointments"
+    )
+
+    result = cursor.fetchone()[0]
+
+    conn.close()
+
+    return result
+
+
+def count_treatments():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT COUNT(*) FROM treatments WHERE status = 'Active'"
+    )
+
+    result = cursor.fetchone()[0]
+
+    conn.close()
+
+    return result
