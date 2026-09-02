@@ -419,41 +419,79 @@ elif menu == "📅 Appointments":
                 with c2:
                     if st.button("✅ Complete",key="done_"+r[0]):
                         execute("UPDATE appointments SET status='Completed' WHERE appointment_id=?",(r[0],)); st.rerun()
-
     with t4:
-    rows = execute(
-        "SELECT appointment_id,patient_id,appointment_date,appointment_time,status "
-        "FROM appointments ORDER BY id DESC LIMIT 200",
-        fetch=True
-    )
-
-    if rows:
-        opts = [
-            f"{r[0]} | {r[1]} | {r[2]} {r[3]} | {r[4]}"
-            for r in rows
-        ]
-
-        sel = st.selectbox("Appointment", opts)
-        r = rows[opts.index(sel)]
-
-        status = st.selectbox(
-            "New Status",
-            ["Scheduled", "In Progress", "Completed", "Cancelled", "No Show"]
+        rows = execute(
+            """
+            SELECT
+                appointment_id,
+                patient_id,
+                appointment_date,
+                appointment_time,
+                status
+            FROM appointments
+            ORDER BY id DESC
+            LIMIT 200
+            """,
+            fetch=True
         )
 
-        reason = st.text_area("Reason / note")
+        if rows:
+            opts = [
+                f"{r[0]} | {r[1]} | {r[2]} {r[3]} | {r[4]}"
+                for r in rows
+            ]
 
-        if st.button("💾 Update Status", use_container_width=True):
-            execute(
-                "UPDATE appointments SET status=?, notes=? WHERE appointment_id=?",
-                (status, reason, r[0])
+            sel = st.selectbox(
+                "Appointment",
+                opts,
+                key="manage_appointment"
             )
 
-            st.success("Appointment updated.")
-            st.rerun()
+            r = rows[opts.index(sel)]
 
-    else:
-        st.info("No appointments.")
+            status = st.selectbox(
+                "New Status",
+                [
+                    "Scheduled",
+                    "In Progress",
+                    "Completed",
+                    "Cancelled",
+                    "No Show"
+                ],
+                key="appointment_status"
+            )
+
+            reason = st.text_area(
+                "Reason / note",
+                key="appointment_reason"
+            )
+
+            if st.button(
+                "💾 Update Status",
+                use_container_width=True,
+                key="update_appointment_status"
+            ):
+                execute(
+                    """
+                    UPDATE appointments
+                    SET status=?, notes=?
+                    WHERE appointment_id=?
+                    """,
+                    (
+                        status,
+                        reason,
+                        r[0]
+                    )
+                )
+
+                st.success(
+                    "✅ Appointment updated successfully."
+                )
+
+                st.rerun()
+
+        else:
+            st.info("No appointments.")
 # ========================= ORTHODONTICS =========================
 
 elif menu == "🦷 Orthodontics":
